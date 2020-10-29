@@ -17,7 +17,7 @@
 	"头文件目录列表":[
 		"./inc/"
 	],
-	"当前生成文件类型":"exe",
+	"当前生成文件类型":"static_lib",
 	"当前程序入口文件":"",
 	"当前编译器":"g++",
 	"源文件目录列表":[
@@ -37,5 +37,5 @@
 	],
 	"项目UUID":"5fb491fa-7b39-472c-9087-79a5619be6d7",
 	"项目名称":"system_util",
-	"项目路径":"/home/workspace/tmp"
+	"项目路径":"/home/ruanjian/workspace/project_pre/system_util"
 }

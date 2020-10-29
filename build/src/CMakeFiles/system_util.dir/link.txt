@@ -1,0 +1,2 @@
+/usr/bin/ar qc ../../output/debug/lib/libsystem_util.a  CMakeFiles/system_util.dir/mutex.cc.o CMakeFiles/system_util.dir/thread.cc.o
+/usr/bin/ranlib ../../output/debug/lib/libsystem_util.a
