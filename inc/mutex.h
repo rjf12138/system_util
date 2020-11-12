@@ -3,7 +3,9 @@
 
 #include "basic_head.h"
 
-class Mutex {
+namespace system_util {
+
+class Mutex : public MsgRecord {
 public:
     Mutex(void);
     virtual ~Mutex(void);
@@ -18,4 +20,5 @@ private:
     pthread_mutex_t mutex_;
 };
 
+}
 #endif

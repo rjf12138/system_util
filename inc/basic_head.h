@@ -17,9 +17,6 @@
 #include <queue>
 #include <utility>
 
-using namespace std;
-
-
 #ifdef __gnu_linux__ 
 ////////////// linux system header file ////////////////
 #include <pthread.h>
@@ -35,5 +32,10 @@ using namespace std;
 
 #endif
 ////////////// defined by myself ////////////////////////
+#include "msg_record.h"
+/////////////////////////////////////////////////////////
+
+using namespace std;
+using namespace my_util;
 
 #endif
