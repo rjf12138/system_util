@@ -3,15 +3,15 @@
 
 #include "basic_head.h"
 
-namespace my_util {
+namespace my_utils {
 //////////////////////////////////////////////////////////////////////////////
 enum InfoLevel {
-    LOG_LEVEL_TRACE,
-    LOG_LEVEL_DEBUG,
-    LOG_LEVEL_INFO,
-    LOG_LEVEL_WARN,
-    LOG_LEVEL_ERROR,
-    LOG_LEVEL_FATAL
+    LOG_LEVEL_TRACE, // 跟踪程序运行流程
+    LOG_LEVEL_DEBUG, // 调试用
+    LOG_LEVEL_INFO,  // 打印信息
+    LOG_LEVEL_WARN,  // 程序出现与预期不一致的错误(非致命性)
+    LOG_LEVEL_ERROR, // 函数调用出现错误
+    LOG_LEVEL_FATAL  // 程序无法继续运行
 };
 
 struct MsgContent {

@@ -1,6 +1,17 @@
-#include "thread.h"
+#include "system_utils.h"
 
-Thread::Thread(void) { }
+namespace system_utils {
+
+Thread::Thread(void) 
+{
+    this->set_stream_func(LOG_LEVEL_TRACE, g_msg_to_stream_trace);
+    this->set_stream_func(LOG_LEVEL_DEBUG, g_msg_to_stream_debug);
+    this->set_stream_func(LOG_LEVEL_INFO, g_msg_to_stream_info);
+    this->set_stream_func(LOG_LEVEL_WARN, g_msg_to_stream_warn);
+    this->set_stream_func(LOG_LEVEL_ERROR, g_msg_to_stream_error);
+    this->set_stream_func(LOG_LEVEL_FATAL, g_msg_to_stream_fatal);
+}
+
 Thread::~Thread(void) { }
 
 void* 
@@ -20,16 +31,34 @@ int
 Thread::init(void)
 {
     this->start_handler();
-    return pthread_create(&thread_id_, NULL, create_func, (void*)this);
+#ifdef __RJF_LINUX__
+    int ret = ::pthread_create(&thread_id_, NULL, create_func, (void*)this);
+    if (ret != 0) {
+        LOG_ERROR("pthread_create(): %s", strerror(ret));
+        return ret;
+    }
+#endif
+
+    return 0;
 }
 
 int Thread::run_handler(void) { return 0;}
 int Thread::stop_handler(void) {return 0; }
 int Thread::start_handler(void) {return 0; }
 
-int Thread::wait_thread(void)
+int 
+Thread::wait_thread(void)
 {
-    return pthread_join(thread_id_, NULL);
+#ifdef __RJF_LINUX__
+    int ret = ::pthread_join(thread_id_, NULL);
+    if (ret != 0) {
+        LOG_ERROR("pthread_join(): %s", strerror(ret));
+        return ret;
+    }
+#endif
+
+    return 0;
 }
 
+}
 ///////////////////////////////////////////////////////////////////////////////////

@@ -17,7 +17,15 @@
 #include <queue>
 #include <utility>
 
-#ifdef __gnu_linux__ 
+using namespace std;
+
+#if defined(_WIN32) || defined(_WIN64) || defined(__WIN32__) 
+    #define __RJF_WINDOWS__
+#elif defined(__gnu_linux__) || defined(__linux__)
+    #define __RJF_LINUX__
+#endif
+
+#if defined(__RJF_LINUX__)
 ////////////// linux system header file ////////////////
 #include <pthread.h>
 #include <unistd.h>
@@ -30,12 +38,8 @@
 #include <sys/socket.h>
 #include <sys/wait.h>
 
-#endif
-////////////// defined by myself ////////////////////////
-#include "msg_record.h"
-/////////////////////////////////////////////////////////
+#elif defined(__RJF_WINDOWS__)
 
-using namespace std;
-using namespace my_util;
+#endif
 
 #endif
