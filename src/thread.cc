@@ -60,5 +60,42 @@ Thread::wait_thread(void)
     return 0;
 }
 
+
+WorkThread::WorkThread(ThreadPool *thread_pool)
+: exit_(false), max_life_(30), thread_pool_(thread_pool)
+{
+
+}
+
+WorkThread::~WorkThread(void)
+{
+
+}
+
+int 
+WorkThread::run_handler(void)
+{
+    while (!exit_) {
+        thread_pool_
+    }
+}
+
+int 
+WorkThread::stop_handler(void)
+{
+    exit_ = true;
+}
+
+int 
+WorkThread::start_handler(void)
+{
+    exit_ = false;
+}
+
+int pause(void);
+int resume(void);
+int set_max_life(int life);
+
+
 }
 ///////////////////////////////////////////////////////////////////////////////////
