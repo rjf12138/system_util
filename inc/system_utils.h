@@ -32,7 +32,10 @@ public:
     virtual int trylock(void);
     virtual int unlock(void);
 
-    virtual int get_errno(void) { return errno_;};
+    virtual int get_errno(void) { return errno_;}
+#ifdef __RJF_LINUX__
+    pthread_mutex_t* get_mutex(void) {return &mutex_;}
+#endif
 private:
     int errno_;
 #ifdef __RJF_LINUX__
@@ -90,8 +93,14 @@ struct Task {
 // thread_pool 的工作线程。
 // 从 threadpool 工作队列中领任务，任务完成后暂停
 // 有新任务分配时，启动继续执行任务
+enum ThreadState {
+    WorkThread_RUNNING,
+    WorkThread_WAITING,
+};
+
 class ThreadPool;
 class WorkThread : public Thread {
+    friend ThreadPool;
 public:
     WorkThread(ThreadPool *thread_pool);
     virtual ~WorkThread(void);
@@ -102,18 +111,29 @@ public:
     virtual int stop_handler(void);
     virtual int start_handler(void);
 
+    void thread_cond_wait(void);
+    void thread_cond_signal(void);
+
     // 暂停线程
     virtual int pause(void);
     // 继续执行线程
     virtual int resume(void);
-    // 当线程空闲时间超出max_life_，则关闭线程
-    virtual int set_max_life(int life);
+
+    virtual int64_t get_thread_id(void) const {return thread_id_;}
+    virtual int get_current_state(void) const {return state_;}
 
 private:
     bool exit_;
     int max_life_; // 单位：秒
+    int state_;
+    int64_t thread_id_;
 
+    Mutex mutex_;
     ThreadPool *thread_pool_;
+    
+#ifdef __RJF_LINUX__
+    pthread_cond_t thread_cond_;
+#endif
 };
 
 // 添加时间轮来防止空闲的线程过多
@@ -126,13 +146,17 @@ public:
     int add_task(Task &task);
     // 任务将被优先执行
     int add_priority_task(Task &task);
-    // 获取任务，优先队列中的任务先被取出
+    // 获取任务，优先队列中的任务先被取出,有任务返回大于0，否则返回等于0
     int get_task(Task &task);
 
     // 设置最小的线程数量，当线程数量等于它时，线程即使超出它寿命依旧不杀死
     int set_min_thread_number(int thread_num);
     int set_max_thread_number(int thread_num);
     int set_thread_life(int life);
+
+private:
+    void thread_move_to_idle_map(int64_t thread_id);
+    void thread_move_to_idle_map(int64_t thread_id);
     
 private:
     int min_thread_num_;
@@ -143,8 +167,8 @@ private:
 
     Queue<Task> tasks_;
     Queue<Task> priority_tasks_;
-    Queue<WorkThread*> runing_threads_;
-    Queue<WorkThread*> idle_threads_;
+    map<int64_t, WorkThread*> runing_threads_;
+    map<int64_t, WorkThread*> idle_threads_;
 };
 
 /////////////////////////////// 信号 //////////////////////////////////////////////////////

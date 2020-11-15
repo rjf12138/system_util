@@ -64,19 +64,53 @@ Thread::wait_thread(void)
 WorkThread::WorkThread(ThreadPool *thread_pool)
 : exit_(false), max_life_(30), thread_pool_(thread_pool)
 {
-
+    thread_id_ = (int64_t)this;
+#ifdef __RJF_LINUX__
+    pthread_cond_init(&thread_cond_, NULL);
+#endif
 }
 
 WorkThread::~WorkThread(void)
 {
+#ifdef __RJF_LINUX__
+    pthread_cond_destroy(&thread_cond_);
+#endif
+}
 
+void 
+WorkThread::thread_cond_wait(void)
+{
+#ifdef __RJF_LINUX__
+    pthread_cond_wait(&thread_cond_, mutex_.get_mutex());
+#endif
+}
+
+void 
+WorkThread::thread_cond_signal(void)
+{
+#ifdef __RJF_LINUX__
+    pthread_cond_signal(&thread_cond_);
+#endif
 }
 
 int 
 WorkThread::run_handler(void)
 {
+    Task task;
     while (!exit_) {
-        thread_pool_
+        mutex_.lock();
+        while (state_ == WorkThread_WAITING) {
+            thread_cond_wait();
+        }
+        mutex_.unlock();
+
+        if (thread_pool_->get_task(task) > 0) {
+            task.state = THREAD_TASK_HANDLE;
+            task.work_func(task.arg);
+            task.state = THREAD_TASK_COMPLETE;
+        }
+
+        this->pause();
     }
 }
 
@@ -92,9 +126,28 @@ WorkThread::start_handler(void)
     exit_ = false;
 }
 
-int pause(void);
-int resume(void);
-int set_max_life(int life);
+int 
+WorkThread::pause(void)
+{
+    mutex_.lock();
+    state_ = WorkThread_WAITING;
+    mutex_.unlock();
+}
+
+int 
+WorkThread::resume(void)
+{
+    mutex_.lock();
+    state_ = WorkThread_RUNNING;
+    thread_cond_signal();
+    mutex_.unlock();
+}
+
+int 
+WorkThread::set_max_life(int life)
+{
+
+}
 
 
 }
