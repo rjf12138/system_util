@@ -91,6 +91,7 @@ struct Task {
     int state;
     void *arg;
     thread_callback work_func;
+    // task finish func
 };
 
 // thread_pool 的工作线程。
