@@ -89,9 +89,10 @@ enum TaskWorkState {
 
 struct Task {
     int state;
-    void *arg;
+    void *thread_arg;
+    void *exit_arg;
     thread_callback work_func;
-    // task finish func
+    thread_callback exit_task;
 };
 
 // thread_pool 的工作线程。
@@ -134,6 +135,7 @@ private:
     int state_;
     int64_t thread_id_;
 
+    Task task_;
     Mutex mutex_;
     ThreadPool *thread_pool_;
     
@@ -159,6 +161,7 @@ struct ThreadPoolConfig {
 };
 
 class ThreadPool : public Thread {
+    friend WorkThread;
 public:
     ThreadPool(void);
     virtual ~ThreadPool(void);
@@ -173,9 +176,6 @@ public:
     int add_task(Task &task);
     // 任务将被优先执行
     int add_priority_task(Task &task);
-    // 获取任务，优先队列中的任务先被取出,有任务返回大于0，否则返回等于0
-    // 除了工作线程之外，其他任何代码都不要去调用该函数，否则会导致的任务丢失
-    int get_task(Task &task);
 
     // 设置最小的线程数量，当线程数量等于它时，线程即使超出它寿命依旧不杀死
     int set_threadpool_config(const ThreadPoolConfig &config);
@@ -184,9 +184,21 @@ private:
     // 关闭线程池中的所有线程
     int shutdown_all_threads(void);
 
+    // 获取任务，优先队列中的任务先被取出,有任务返回大于0，否则返回等于0
+    // 除了工作线程之外，其他任何代码都不要去调用该函数，否则会导致的任务丢失
+    int get_task(Task &task);
+
+    // 移除已经关闭的工作线程信息
+    // 注意：使用时要确保线程已经结束了
+    int remove_thread(int64_t thread_id);
+
+    // 工作线程初始化以及动态调整线程数量
+    // 任务的分配
+    int manage_work_threads(bool is_init);
+
 private:
     void thread_move_to_idle_map(int64_t thread_id);
-    void thread_move_to_idle_map(int64_t thread_id);
+    void thread_move_to_running_map(int64_t thread_id);
     
 private:
     bool exit_;

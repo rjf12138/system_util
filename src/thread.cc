@@ -96,7 +96,6 @@ WorkThread::thread_cond_signal(void)
 int 
 WorkThread::run_handler(void)
 {
-    Task task;
     while (state_ != WorkThread_EXIT) {
         mutex_.lock();
         while (state_ == WorkThread_WAITING) {
@@ -105,15 +104,17 @@ WorkThread::run_handler(void)
         mutex_.unlock();
 
         if (state_ == WorkThread_RUNNING) {
-            if (thread_pool_->get_task(task) > 0) {
-                task.state = THREAD_TASK_HANDLE;
-                task.work_func(task.arg);
-                task.state = THREAD_TASK_COMPLETE;
+            if (thread_pool_->get_task(task_) > 0) {
+                task_.state = THREAD_TASK_HANDLE;
+                task_.work_func(task_.thread_arg);
+                task_.state = THREAD_TASK_COMPLETE;
             }
         }
 
         this->pause();
     }
+
+    thread_pool_->remove_thread((int64_t)this);
 
     return 0;
 }
@@ -121,7 +122,17 @@ WorkThread::run_handler(void)
 int 
 WorkThread::stop_handler(void)
 {
+    // 设置线程为退出状态
+    int old_state = state_;
     state_ = WorkThread_EXIT;
+    // 运行中的线程，调用由任务发布者设置的任务退出函数
+    if (old_state == WorkThread_RUNNING) {
+        if (task_.exit_task != nullptr) {
+            task_.exit_task(task_.exit_arg);
+        }
+    } else if (old_state == WorkThread_WAITING) { // 唤醒空闲线程，然后走结束线程的流程
+        this->resume();
+    }
 
     return 0;
 }
@@ -129,7 +140,7 @@ WorkThread::stop_handler(void)
 int 
 WorkThread::start_handler(void)
 {
-    state_ = WorkThread_RUNNING;
+    state_ = WorkThread_WAITING;
 
     return 0;
 }
@@ -142,6 +153,7 @@ WorkThread::pause(void)
         state_ = WorkThread_WAITING;
         remain_life_ = idle_life_;
         mutex_.unlock();
+        thread_pool_->thread_move_to_idle_map((int64_t)this);
     }
 
     return 0;
@@ -151,11 +163,13 @@ int
 WorkThread::resume(void)
 {
     if (state_ == WorkThread_WAITING) {
-        mutex_.lock();
         state_ = WorkThread_RUNNING;
-        thread_cond_signal();
-        mutex_.unlock();
+        thread_pool_->thread_move_to_running_map((int64_t)this);
     }
+
+    mutex_.lock();
+    thread_cond_signal();
+    mutex_.unlock();
 
     return 0;
 }
@@ -164,7 +178,11 @@ WorkThread::resume(void)
 ThreadPool::ThreadPool(void)
 : exit_(false)
 {
-
+    thread_pool_config_.min_thread_num = 5;
+    thread_pool_config_.max_thread_num = 10;
+    thread_pool_config_.idle_thread_life = 30;
+    thread_pool_config_.threadpool_exit_action = SHUTDOWN_ALL_THREAD_IMMEDIATELY;
+    this->manage_work_threads(true);
 }
 
 ThreadPool::~ThreadPool(void)
@@ -177,20 +195,14 @@ ThreadPool::run_handler(void)
 {
     while (!exit_) {
         os_sleep(1000);
-        for (auto iter = idle_threads_.begin(); iter != idle_threads_.end(); ++iter) {
-            int lifetime = iter->second->adjust_thread_life(1);
-            if (lifetime <= 0) {
-                iter->second->stop_handler(); // 设置线程关闭标志
-                iter->second->resume(); // 唤醒空闲线程，执行线程关闭动作
-            }
-        }
+        this->manage_work_threads(false);
     }
 }
 
 int ThreadPool::stop_handler(void)
 {
-    this->shutdown_all_threads();
     exit_ = true;
+    this->shutdown_all_threads();
 }
 
 int 
@@ -232,23 +244,138 @@ ThreadPool::get_task(Task &task)
 }
 
 int 
+ThreadPool::remove_thread(int64_t thread_id)
+{
+    mutex_.lock();
+    auto remove_iter = idle_threads_.find(thread_id);
+    if (remove_iter != idle_threads_.end()) {
+        delete remove_iter->second;
+        idle_threads_.erase(remove_iter);
+    }
+
+    remove_iter = runing_threads_.find(thread_id);
+    if (remove_iter != runing_threads_.end()) {
+        delete remove_iter->second;
+        runing_threads_.erase(remove_iter);
+    }
+    mutex_.unlock();
+
+    return 0;
+}
+
+int 
+ThreadPool::manage_work_threads(bool is_init)
+{
+    if (is_init) {
+        for (int i = 0; i < thread_pool_config_.min_thread_num; ++i) {
+            WorkThread *work_thread = new WorkThread(this);
+            work_thread->init();
+            idle_threads_[(int64_t)work_thread] = work_thread;
+        }
+
+        return 0;
+    }
+
+    if (tasks_.size() > 0 ) {
+        int awake_threads = tasks_.size() / 2 + 1;
+        for (int i = 0; i < awake_threads; ++i) {
+            if (idle_threads_.size() > 0) {
+                idle_threads_[0]->resume();
+            } else {
+                if (runing_threads_.size() < thread_pool_config_.max_thread_num) {
+                    WorkThread *work_thread = new WorkThread(this);
+                    work_thread->init();
+                    idle_threads_[(int64_t)work_thread] = work_thread;
+                    --i;
+                    continue;
+                } else {
+                    // 可分配的线程数已经达到最大
+                    LOG_INFO("run out of threads: running threads: %d, max threads: %d", runing_threads_.size(), thread_pool_config_.max_thread_num);
+                    break;
+                }
+            }
+        }
+    }
+
+    for (auto iter = idle_threads_.begin(); iter != idle_threads_.end(); ++iter) {
+        int lifetime = iter->second->adjust_thread_life(1);
+        if (lifetime <= 0) {
+            iter->second->stop_handler(); // 关闭多余的空闲线程
+        }
+    }
+
+    return 0;
+}
+
+void 
+ThreadPool::thread_move_to_idle_map(int64_t thread_id)
+{
+    mutex_.lock();
+    auto iter = runing_threads_.find(thread_id);
+    if (iter == runing_threads_.end()) {
+        mutex_.unlock();
+        LOG_WARNING("Can't find thread(thread_id: %ld) at runing_threads", thread_id);
+        mutex_.unlock();
+        return ;
+    }
+
+    if (idle_threads_.find(thread_id) != idle_threads_.end()) {
+        LOG_WARNING("There is exists a thread(thread_id: %ld) at idle_threads", thread_id);
+        mutex_.unlock();
+        return ;
+    }
+
+    idle_threads_[thread_id] = iter->second;
+    runing_threads_.erase(iter);
+
+    mutex_.unlock();
+
+    return ;
+}
+
+void 
+ThreadPool::thread_move_to_running_map(int64_t thread_id)
+{
+    mutex_.lock();
+    auto iter = idle_threads_.find(thread_id);
+    if (iter == idle_threads_.end()) {
+        LOG_WARNING("Can't find thread(thread_id: %ld) at idle_threads", thread_id);
+        mutex_.unlock();
+        return ;
+    }
+
+    if (runing_threads_.find(thread_id) != runing_threads_.end()) {
+        LOG_WARNING("There is exists a thread(thread_id: %ld) at runing_threads", thread_id);
+        mutex_.unlock();
+        return ;
+    }
+
+    runing_threads_[thread_id] = iter->second;
+    idle_threads_.erase(iter);
+
+    mutex_.unlock();
+
+    return ;
+}
+
+int 
 ThreadPool::set_threadpool_config(const ThreadPoolConfig &config)
 {
-    
+
     if (config.min_thread_num <= 0 || config.min_thread_num > MAX_THREADS_NUM) {
-        LOG_WARNING("ThreadPool::set_threadpool_config(): min thread num is out of range --- %d", config.min_thread_num);
+        LOG_WARNING("min thread num is out of range --- %d", config.min_thread_num);
     } else {
         thread_pool_config_.min_thread_num =  config.min_thread_num;
     }
 
-    if (config.max_thread_num <= 0 || config.max_thread_num > MAX_THREADS_NUM) {
-        LOG_WARNING("ThreadPool::set_threadpool_config(): max thread num is out of range --- %d", config.max_thread_num);
+    if (config.max_thread_num <= config.min_thread_num || config.max_thread_num > MAX_THREADS_NUM) {
+        LOG_WARNING("max thread num is out of range --- %d", config.max_thread_num);
     } else {
         thread_pool_config_.max_thread_num =  config.max_thread_num;
     }
 
     if (thread_pool_config_.idle_thread_life <= 0 || thread_pool_config_.idle_thread_life > MAX_THREAD_IDLE_LIFE) {
-        LOG_WARNING("ThreadPool::set_threadpool_config(): thread life is out of range --- %d", thread_pool_config_.idle_thread_life);
+        LOG_WARNING("thread life is out of range --- %d", thread_pool_config_.idle_thread_life);
     } else {
         thread_pool_config_.idle_thread_life = config.idle_thread_life;
     }
@@ -260,23 +387,34 @@ ThreadPool::set_threadpool_config(const ThreadPoolConfig &config)
     return 0;
 }
 
-// pthread_cancel 可能会造成资源释放不正确
 int 
 ThreadPool::shutdown_all_threads(void)
 {
     int action = thread_pool_config_.threadpool_exit_action;
-    LOG_INFO("ThreadPool::shutdown_all_threads(): Action: %s", action == WAIT_FOR_ALL_TASKS_FINISHED ? "WAIT_FOR_ALL_TASKS_FINISHED":"SHUTDOWN_ALL_THREAD_IMMEDIATELY");
+    LOG_INFO("Action: %s", action == WAIT_FOR_ALL_TASKS_FINISHED ? "WAIT_FOR_ALL_TASKS_FINISHED":"SHUTDOWN_ALL_THREAD_IMMEDIATELY");
     
     if (action == WAIT_FOR_ALL_TASKS_FINISHED) {
+        // 等待任务完成
         while (runing_threads_.size() > 0) {
+            LOG_INFO("Wait for task finish, Working threads num: %d", runing_threads_.size());
             os_sleep(1000);
         }
     } else {
-
-        for (auto iter = idle_threads_.begin(); iter != idle_threads_.end(); ++iter) {
-            
+        // 停止所有正在处理任务的线程
+        for (auto iter = runing_threads_.begin(); iter != runing_threads_.end(); ++iter) {
+            iter->second->stop_handler();
         }
     }
+
+    while (runing_threads_.size() > 0) {
+        LOG_ERROR("shutdown threads error: %d threads still running", runing_threads_.size());
+    }
+
+    for (auto iter = idle_threads_.begin(); iter != idle_threads_.end(); ++iter) {
+        iter->second->stop_handler();
+    }
+
+    return 0;
 }
 
 
