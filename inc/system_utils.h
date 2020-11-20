@@ -4,6 +4,7 @@
 #include "basic_head.h"
 #include "msg_record.h"
 #include "data_structure.h"
+#include "byte_buffer.h"
 
 using namespace my_utils;
 
@@ -212,11 +213,60 @@ private:
     map<int64_t, WorkThread*> idle_threads_; // 空闲的线程列表
 };
 
-/////////////////////////////// 信号 //////////////////////////////////////////////////////
-
-
 /////////////////////////////// 文件流 ////////////////////////////////////////////////////
+// 修改一下成功返回0，失败返回非0
+#define DEFAULT_OPEN_FLAG   O_RDWR
+#define DEFAULT_FILE_RIGHT  S_IRUSR | S_IWUSR | S_IRGRP | S_IROTH
 
+class Stream : public MsgRecord {
+public:
+    Stream(void);
+    ~Stream(void);
+
+    // 根据文件路径打开文件
+    int open(const string file_path, int flag = DEFAULT_OPEN_FLAG, int file_right = DEFAULT_FILE_RIGHT);
+    // 根据文件描述符打开文件
+    // 默认退出时不关闭文件描述符
+    int set_fd(int fd, bool open_when_exit = true);
+
+    // 返回文件信息
+    int fileinfo(struct stat &file_info);
+    // 返回文件的大小
+    off_t file_size() {return file_info_.st_size;}
+    // 关闭文件
+    int close_file(void);
+    // 检查文件描述符
+    int check_fd(int fd);
+    // 清空文件
+    int clear_file(void);
+    
+    // 设置文件偏移
+    off_t seek(off_t offset, int whence);
+    // 返回当前文件偏移
+    off_t curr_pos(void);
+
+    // 从当前位置读取任意数据
+    ssize_t read(ByteBuffer &buff, size_t buf_size);
+    // 从某一位置读取数据
+    ssize_t read_from_pos(ByteBuffer &buff, size_t buf_size, off_t pos, int whence);
+
+    // 写数据
+    ssize_t write(ByteBuffer &buff, size_t buf_size);
+    // 从某一位置写数据
+    ssize_t write_to_pos(ByteBuffer &buff, size_t buf_size ,off_t pos, int whence);
+
+    // 格式化读
+    ssize_t read_fmt(ByteBuffer &buff);
+    // 格式化写
+    ssize_t write_fmt(ByteBuffer &buff, size_t buf_size);
+
+private:
+    int fd_;
+    bool open_on_exit_;
+    bool file_open_flag_;
+    unsigned max_lines_;
+    struct stat file_info_;
+};
 
 
 /////////////////////////////// 网络套接字 /////////////////////////////////////////////////
