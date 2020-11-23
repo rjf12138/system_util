@@ -155,8 +155,8 @@ enum ThreadPoolExitAction {
 };
 
 struct ThreadPoolConfig {
-    int min_thread_num;
-    int max_thread_num;
+    std::size_t min_thread_num;
+    std::size_t max_thread_num;
     int idle_thread_life;
     int threadpool_exit_action; // 默认时强制关闭所有线程
 };
@@ -256,9 +256,9 @@ public:
     ssize_t write_to_pos(ByteBuffer &buff, size_t buf_size ,off_t pos, int whence);
 
     // 格式化读
-    ssize_t read_fmt(ByteBuffer &buff);
+    ssize_t read_fmt(ByteBuffer &buff, const char *fmt, ...);
     // 格式化写
-    ssize_t write_fmt(ByteBuffer &buff, size_t buf_size);
+    ssize_t write_fmt(ByteBuffer &buff, const char *fmt, ...);
 
 private:
     int fd_;
@@ -270,7 +270,45 @@ private:
 
 
 /////////////////////////////// 网络套接字 /////////////////////////////////////////////////
+// IPv4: 只支持TCP
+class Socket : public MsgRecord {
+public:
+    Socket(void);
+    Socket(string ip, short port);
+    ~Socket();
 
+    // 设置不是由本类所创建的套接字
+    int set_socket(int clisock, struct sockaddr *cliaddr = nullptr, socklen_t *addrlen = nullptr);
+    // ip,port可以是本地的用于创建服务端程序，也可以是客户端连接到服务端IP和端口
+    int create_socket(string ip, short port);
+
+    // 这里listen()合并了 bind()和listen
+    int listen(void);
+    // 客户端连接到服务端
+    int connect(void);
+    // 由TCP服务器调用
+    int accept(int &clisock, struct sockaddr *cliaddr = nullptr, socklen_t *addrlen = nullptr);
+
+
+
+    int get_socket(int &socket);
+    // 关闭套接字
+    int close(void);
+    // 禁用套接字I/O
+    // how:的选项
+    // SHUT_WR(关闭写端)
+    // SHUT_RD(关闭读端)
+    // SHUT_RDWR(关闭读和写)
+    int shutdown(int how);
+private:
+    bool is_enable_;
+    int socket_;
+
+    short port_;
+    string ip_;
+
+    struct sockaddr_in addr_;
+};
 ///////////////////////////////////////////////////////////////////////////////////////////
 
 }

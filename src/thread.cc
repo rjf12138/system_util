@@ -197,18 +197,22 @@ ThreadPool::run_handler(void)
         os_sleep(1000);
         this->manage_work_threads(false);
     }
+
+    return 0;
 }
 
 int ThreadPool::stop_handler(void)
 {
     exit_ = true;
-    this->shutdown_all_threads();
+    return this->shutdown_all_threads();
 }
 
 int 
 ThreadPool::start_handler(void)
 {
     exit_ = false;
+
+    return 0;
 }
 
 int 
@@ -267,7 +271,7 @@ int
 ThreadPool::manage_work_threads(bool is_init)
 {
     if (is_init) {
-        for (int i = 0; i < thread_pool_config_.min_thread_num; ++i) {
+        for (std::size_t i = 0; i < thread_pool_config_.min_thread_num; ++i) {
             WorkThread *work_thread = new WorkThread(this);
             work_thread->init();
             idle_threads_[(int64_t)work_thread] = work_thread;
