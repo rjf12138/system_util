@@ -5,6 +5,9 @@
 		"gmock_main",
 		"gtest",
 		"gtest_main",
+		"message",
+		"buffer",
+		"data_structure",
 		"pthread"
 	],
 	"release版编译选项":"#-O2 -Wall -std=c++11",
@@ -18,15 +21,15 @@
 	"头文件目录列表":[
 		"./inc/"
 	],
-	"当前生成文件类型":"static_lib",
-	"当前程序入口文件":"",
+	"当前生成文件类型":"exe",
+	"当前程序入口文件":"echo_server_test.cc",
 	"当前编译器":"x86_64-w64-mingw32-g++",
 	"源文件目录列表":[
 		"./src/",
 		"./main/"
 	],
 	"程序入口文件列表":[
-		
+		"echo_server_test.cc"
 	],
 	"程序参数":"#",
 	"编译方式":"debug",

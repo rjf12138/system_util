@@ -278,7 +278,7 @@ public:
     ~Socket();
 
     // 设置不是由本类所创建的套接字
-    int set_socket(int clisock, struct sockaddr *cliaddr = nullptr, socklen_t *addrlen = nullptr);
+    int set_socket(int clisock, struct sockaddr_in *cliaddr = nullptr, socklen_t *addrlen = nullptr);
     // ip,port可以是本地的用于创建服务端程序，也可以是客户端连接到服务端IP和端口
     int create_socket(string ip, short port);
 
@@ -287,11 +287,17 @@ public:
     // 客户端连接到服务端
     int connect(void);
     // 由TCP服务器调用
+    // clisock: 返回的客户端socket
+    // cliaddr: 返回的客户端IP信息
+    // addrlen: 设置cliaddr 结构的大小
     int accept(int &clisock, struct sockaddr *cliaddr = nullptr, socklen_t *addrlen = nullptr);
 
-
+    int recv(ByteBuffer &buff, int buff_size, int flags);
+    int send(ByteBuffer &buff, int buff_size, int flags);
 
     int get_socket(int &socket);
+    int get_ip_info(string &ip, short &port);
+    bool get_socket_state(void) const {return is_enable_;}
     // 关闭套接字
     int close(void);
     // 禁用套接字I/O

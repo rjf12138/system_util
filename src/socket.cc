@@ -61,10 +61,51 @@ Socket::get_socket(int &socket)
 }
 
 int 
+Socket::get_ip_info(string &ip, short &port)
+{
+    if (is_enable_ == false) {
+        LOG_WARNING("Please create socket first.");
+        return 1;
+    }
+
+    ip = ip_;
+    port = port_;
+
+    return 0;
+}
+
+int 
+Socket::set_socket(int clisock, struct sockaddr_in *cliaddr, socklen_t *addrlen)
+{
+    if (is_enable_ == true) {
+        LOG_WARNING("set_socket failed, there's already opened a socket.");
+        return 1;
+    }
+
+    socket_ = clisock;
+    is_enable_ = true;
+    if (cliaddr == nullptr || addrlen == nullptr) {
+        return 0;
+    }
+
+    char buf[128] = {0};
+    const char *ret = ::inet_ntop(AF_INET, &(cliaddr->sin_addr), buf, *addrlen);
+    if (ret == nullptr) {
+        LOG_ERROR("inet_ntop: %s", strerror(errno));
+        return 1;
+    }
+
+    ip_ = ret;
+    port_ = ::ntohs(cliaddr->sin_port);
+
+    return 0;
+}
+
+int 
 Socket::create_socket(string ip, short port)
 {
     if (is_enable_ == true) {
-        LOG_WARNING("set ip info failed, there's already opened a socket.");
+        LOG_WARNING("create_socket failed, there's already opened a socket.");
         return 1;
     }
 
@@ -156,6 +197,57 @@ int Socket::accept(int &clisock, struct sockaddr *cliaddr, socklen_t *addrlen)
     clisock = ret;
 
     return 0;
+}
+
+int 
+Socket::recv(ByteBuffer &buff, int buff_size, int flags)
+{
+    if (is_enable_ == false) {
+        LOG_WARNING("Please create socket first.");
+        return 0;
+    }
+
+    size_t remain_size = buff_size;
+    do {
+        ssize_t ret = ::recv(socket_, buff.get_write_buffer_ptr(), buff.get_cont_write_size(), flags);
+        if (ret < 0) {
+            LOG_ERROR("recv: %s", strerror(errno));
+            return 0;
+        }
+        
+        remain_size -= ret;
+
+        if (ret == 0 || buff.idle_size() == 0) {
+            break;
+        }
+    }  while (remain_size > 0);
+   
+    return buff.data_size();
+}
+
+int 
+Socket::send(ByteBuffer &buff, int buff_size, int flags)
+{
+    if (is_enable_ == false) {
+        LOG_WARNING("Please create socket first.");
+        return 0;
+    }
+
+    size_t remain_size = buff_size;
+    do {
+        int ret = ::send(socket_, buff.get_read_buffer_ptr(), buff.get_cont_read_size(), flags);
+        if (ret == -1) {
+            LOG_ERROR("send: %s", strerror(errno));
+            return 0;
+        }
+
+        remain_size -= ret;
+        if (ret == 0 || buff.idle_size() == 0) {
+            break;
+        }
+    }  while (remain_size > 0);
+   
+    return buff_size - remain_size;
 }
 
 }
