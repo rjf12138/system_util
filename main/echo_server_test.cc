@@ -14,7 +14,7 @@ int main(void)
     ThreadPool pool;
     pool.init();
 
-    Socket echo_server("127.0.0.1", 12138);
+    Socket echo_server("172.16.8.1", 12138);
     echo_server.listen();
 
     int cli_socket;

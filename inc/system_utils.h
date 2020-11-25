@@ -3,7 +3,8 @@
 
 #include "basic_head.h"
 #include "msg_record.h"
-#include "data_structure.h"
+#include "data_structure/data_structure.h"
+#include "data_structure/queue.h"
 #include "byte_buffer.h"
 
 using namespace my_utils;

@@ -10,7 +10,7 @@
                     "-r"
                 ],
                 "options": {
-                    "cwd": "/home/ruanjian/workspace/project_pre/system_util/"
+                    "cwd": "/home/ruanjian/workspace/project_pre/system_util"
                 },
                 "group": {
                     "kind": "build",

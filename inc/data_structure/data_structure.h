@@ -28,25 +28,17 @@ struct Element {
     virtual ~Element(void);
 };
 
-/////////////////////////// 队列 ////////////////////////////////////////////////
 
 template<class T>
-class Queue {
-public:
-    Queue(void);
-    virtual ~Queue();
+Element<T>::Element(void)
+: pre_node(nullptr), next_node(nullptr)
+{}
 
-    int push(const T &data);
-    int pop(T &data);
-    inline int size(void) const;
-    inline bool empty(void) const;
-    
-private:
-    Element<T> *head_;
-    Element<T> *tail_;
-    int size_;
-};
+template<class T>
+Element<T>::~Element(void)
+{}
 
+/////////////////////////// 队列 ////////////////////////////////////////////////
 
 }
 
