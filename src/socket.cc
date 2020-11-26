@@ -52,7 +52,7 @@ int
 Socket::get_socket(int &socket)
 {
     if (is_enable_ == false) {
-        LOG_WARNING("Please create socket first.");
+        LOG_WARN("Please create socket first.");
         return 1;
     }
 
@@ -64,7 +64,7 @@ int
 Socket::get_ip_info(string &ip, short &port)
 {
     if (is_enable_ == false) {
-        LOG_WARNING("Please create socket first.");
+        LOG_WARN("Please create socket first.");
         return 1;
     }
 
@@ -78,7 +78,7 @@ int
 Socket::set_socket(int clisock, struct sockaddr_in *cliaddr, socklen_t *addrlen)
 {
     if (is_enable_ == true) {
-        LOG_WARNING("set_socket failed, there's already opened a socket.");
+        LOG_WARN("set_socket failed, there's already opened a socket.");
         return 1;
     }
 
@@ -105,7 +105,7 @@ int
 Socket::create_socket(string ip, short port)
 {
     if (is_enable_ == true) {
-        LOG_WARNING("create_socket failed, there's already opened a socket.");
+        LOG_WARN("create_socket failed, there's already opened a socket.");
         return 1;
     }
 
@@ -115,7 +115,7 @@ Socket::create_socket(string ip, short port)
 
     int ret = ::inet_pton(AF_INET, ip_.c_str(), &addr_.sin_addr);
     if (ret  == 0) {
-        LOG_WARNING("Incorrect format of IP address");
+        LOG_WARN("Incorrect format of IP address");
         return 1;
     } else if (ret < 0) {
         LOG_ERROR("inet_pton: %s", strerror(errno));
@@ -143,7 +143,7 @@ int
 Socket::listen(void)
 {
     if (is_enable_ == false) {
-        LOG_WARNING("Please create socket first.");
+        LOG_WARN("Please create socket first.");
         return 1;
     }
 
@@ -167,7 +167,7 @@ Socket::listen(void)
 int Socket::connect(void)
 {
     if (is_enable_ == false) {
-        LOG_WARNING("Please create socket first.");
+        LOG_WARN("Please create socket first.");
         return 1;
     }
 
@@ -184,7 +184,7 @@ int Socket::connect(void)
 int Socket::accept(int &clisock, struct sockaddr *cliaddr, socklen_t *addrlen)
 {
     if (is_enable_ == false) {
-        LOG_WARNING("Please create socket first.");
+        LOG_WARN("Please create socket first.");
         return 1;
     }
 
@@ -203,7 +203,7 @@ int
 Socket::recv(ByteBuffer &buff, int buff_size, int flags)
 {
     if (is_enable_ == false) {
-        LOG_WARNING("Please create socket first.");
+        LOG_WARN("Please create socket first.");
         return 0;
     }
 
@@ -229,7 +229,7 @@ int
 Socket::send(ByteBuffer &buff, int buff_size, int flags)
 {
     if (is_enable_ == false) {
-        LOG_WARNING("Please create socket first.");
+        LOG_WARN("Please create socket first.");
         return 0;
     }
 

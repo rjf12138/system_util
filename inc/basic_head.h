@@ -17,6 +17,8 @@
 #include <queue>
 #include <utility>
 
+#include <csignal>
+
 using namespace std;
 
 #if defined(_WIN32) || defined(_WIN64) || defined(__WIN32__) 
@@ -37,6 +39,7 @@ using namespace std;
 #include <arpa/inet.h>
 #include <sys/socket.h>
 #include <sys/wait.h>
+#include <setjmp.h>
 
 #elif defined(__RJF_WINDOWS__)
 

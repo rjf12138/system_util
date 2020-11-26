@@ -284,7 +284,7 @@ ThreadPool::manage_work_threads(bool is_init)
         int awake_threads = tasks_.size() / 2 + 1;
         for (int i = 0; i < awake_threads; ++i) {
             if (idle_threads_.size() > 0) {
-                idle_threads_[0]->resume();
+                idle_threads_.begin()->second->resume();
             } else {
                 if (runing_threads_.size() < thread_pool_config_.max_thread_num) {
                     WorkThread *work_thread = new WorkThread(this);
@@ -318,13 +318,13 @@ ThreadPool::thread_move_to_idle_map(int64_t thread_id)
     auto iter = runing_threads_.find(thread_id);
     if (iter == runing_threads_.end()) {
         mutex_.unlock();
-        LOG_WARNING("Can't find thread(thread_id: %ld) at runing_threads", thread_id);
+        LOG_WARN("Can't find thread(thread_id: %ld) at runing_threads", thread_id);
         mutex_.unlock();
         return ;
     }
 
     if (idle_threads_.find(thread_id) != idle_threads_.end()) {
-        LOG_WARNING("There is exists a thread(thread_id: %ld) at idle_threads", thread_id);
+        LOG_WARN("There is exists a thread(thread_id: %ld) at idle_threads", thread_id);
         mutex_.unlock();
         return ;
     }
@@ -343,13 +343,13 @@ ThreadPool::thread_move_to_running_map(int64_t thread_id)
     mutex_.lock();
     auto iter = idle_threads_.find(thread_id);
     if (iter == idle_threads_.end()) {
-        LOG_WARNING("Can't find thread(thread_id: %ld) at idle_threads", thread_id);
+        LOG_WARN("Can't find thread(thread_id: %ld) at idle_threads", thread_id);
         mutex_.unlock();
         return ;
     }
 
     if (runing_threads_.find(thread_id) != runing_threads_.end()) {
-        LOG_WARNING("There is exists a thread(thread_id: %ld) at runing_threads", thread_id);
+        LOG_WARN("There is exists a thread(thread_id: %ld) at runing_threads", thread_id);
         mutex_.unlock();
         return ;
     }
@@ -367,19 +367,19 @@ ThreadPool::set_threadpool_config(const ThreadPoolConfig &config)
 {
 
     if (config.min_thread_num <= 0 || config.min_thread_num > MAX_THREADS_NUM) {
-        LOG_WARNING("min thread num is out of range --- %d", config.min_thread_num);
+        LOG_WARN("min thread num is out of range --- %d", config.min_thread_num);
     } else {
         thread_pool_config_.min_thread_num =  config.min_thread_num;
     }
 
     if (config.max_thread_num <= config.min_thread_num || config.max_thread_num > MAX_THREADS_NUM) {
-        LOG_WARNING("max thread num is out of range --- %d", config.max_thread_num);
+        LOG_WARN("max thread num is out of range --- %d", config.max_thread_num);
     } else {
         thread_pool_config_.max_thread_num =  config.max_thread_num;
     }
 
     if (thread_pool_config_.idle_thread_life <= 0 || thread_pool_config_.idle_thread_life > MAX_THREAD_IDLE_LIFE) {
-        LOG_WARNING("thread life is out of range --- %d", thread_pool_config_.idle_thread_life);
+        LOG_WARN("thread life is out of range --- %d", thread_pool_config_.idle_thread_life);
     } else {
         thread_pool_config_.idle_thread_life = config.idle_thread_life;
     }

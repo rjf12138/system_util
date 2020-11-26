@@ -6,20 +6,28 @@ using namespace system_utils;
 void *echo_handler(void *arg);
 void *echo_exit(void *arg);
 
+ThreadPool pool;
+
+void sig_int(int sig);
+
 int main(void)
 {
+    if (signal(SIGINT, sig_int) == SIG_ERR) {
+        fprintf(stderr, "signal error!");
+        return 0;
+    }
+
     ByteBuffer buff;
     string str;
 
     std::size_t min_thread = 59;
     std::size_t max_thread = 60;
     ThreadPoolConfig config = {min_thread, max_thread, 30, SHUTDOWN_ALL_THREAD_IMMEDIATELY};
-    ThreadPool pool;
     pool.init();
     pool.set_threadpool_config(config);
 
-    while (true) {
-        Socket *cli = new Socket("172.16.8.1", 12138);
+    for (int i = 0; i < 10; ++i) {
+        Socket *cli = new Socket("127.0.0.1", 12138);
         Task task;
         task.exit_arg = cli;
         task.thread_arg = cli;
@@ -29,7 +37,15 @@ int main(void)
         pool.add_task(task);
     }
 
+    pool.wait_thread();
+
     return 0;
+}
+
+void sig_int(int sig)
+{
+    std::cout << "Exit client!" << std::endl;
+    pool.stop_handler();
 }
 
 void *echo_handler(void *arg)

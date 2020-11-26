@@ -22,7 +22,7 @@ int
 Stream::open(const string file_path, int flag, int file_right)
 {
     if (file_path.empty()) {
-        LOG_WARNING("file_path is empty");
+        LOG_WARN("file_path is empty");
         return 1;
     }
 
@@ -152,7 +152,7 @@ ssize_t
 Stream::read(ByteBuffer &buff, size_t buf_size)
 {
     if (!file_open_flag_) {
-        LOG_WARNING("Stream::read: haven't open any file!");
+        LOG_WARN("Stream::read: haven't open any file!");
         return 0;
     }
 

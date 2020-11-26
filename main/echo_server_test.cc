@@ -6,26 +6,50 @@ using namespace system_utils;
 void *echo_handler(void *arg);
 void *echo_exit(void *arg);
 
+ThreadPool pool;
+bool server_exit = false;
+
+// 打断阻塞的accept函数
+static jmp_buf jmpbuf; 
+void accept_exit(int sig);
+
+// 通知退出程序
+void sig_int(int sig);
+
 int main(void)
 {
+    if (signal(SIGINT, sig_int) == SIG_ERR) {
+        fprintf(stderr, "signal error!");
+        return 0;
+    }
+
+    if (signal(SIGIO, accept_exit) == SIG_ERR) {
+        fprintf(stderr, "signal error!");
+        return 0;
+    }
+
     ByteBuffer buff;
     string str;
 
-    ThreadPool pool;
     pool.init();
 
-    Socket echo_server("172.16.8.1", 12138);
+    Socket echo_server("127.0.0.1", 12138);
     echo_server.listen();
 
     int cli_socket;
     struct sockaddr_in cliaddr;
     socklen_t size = sizeof(cliaddr);
 
-    while (true) {
+    if(setjmp(jmpbuf)) {
+        pool.stop_handler();
+    } 
+
+    while (!server_exit) {
         int ret = echo_server.accept(cli_socket, (sockaddr*)&cliaddr, &size);
         if (ret != 0) {
             break;
         }
+        printf("accept socket!");
         Socket *cli = new Socket;
         Task task;
         task.exit_arg = cli;
@@ -37,6 +61,18 @@ int main(void)
     }
 
     return 0;
+}
+
+void sig_int(int sig)
+{
+    std::cout << "Exit server!" << std::endl;
+    server_exit = true;
+    kill(getpid(), SIGIO);
+}
+
+void accept_exit(int sig)
+{
+    longjmp(jmpbuf, 1);
 }
 
 void *echo_handler(void *arg)
@@ -57,7 +93,7 @@ void *echo_handler(void *arg)
         if (ret > 0) {
             string str;
             buff.read_string(str);
-
+            printf("Client (%s:%d): %s", cli_ip.c_str(), cli_port, str.c_str());
             if (str == "quit") {
                 break;
             }
