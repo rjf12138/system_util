@@ -13,7 +13,7 @@ void sig_int(int sig);
 int main(void)
 {
     if (signal(SIGINT, sig_int) == SIG_ERR) {
-        fprintf(stderr, "signal error!");
+        LOG_GLOBAL_DEBUG("signal error!");
         return 0;
     }
 
@@ -44,7 +44,7 @@ int main(void)
 
 void sig_int(int sig)
 {
-    std::cout << "Exit client!" << std::endl;
+    LOG_GLOBAL_DEBUG("Exit client!");
     pool.stop_handler();
 }
 
@@ -56,14 +56,14 @@ void *echo_handler(void *arg)
 
     Socket *cli_info = (Socket*)arg;
     string cli_ip;
-    short cli_port;
+    uint16_t cli_port;
     cli_info->get_ip_info(cli_ip, cli_port);
 
     if (cli_info->connect() != 0) {
-        printf("Client: %s:%d connect failed!\n", cli_ip.c_str(), cli_port);
+        LOG_GLOBAL_DEBUG("Client: %s:%d connect failed!", cli_ip.c_str(), cli_port);
         return nullptr;
     }
-    printf("Client: %s:%d connect successed！\n", cli_ip.c_str(), cli_port);
+    LOG_GLOBAL_DEBUG("Client: %s:%d connect successed！", cli_ip.c_str(), cli_port);
 
     string data = "{\"data\": \"client\", \"num\":12138}";
     ByteBuffer buff;
@@ -82,12 +82,12 @@ void *echo_handler(void *arg)
         string recv_data;
         buff.read_string(recv_data);
         if (recv_data != data) {
-            printf("Client: %s:%d exit error!\n", cli_ip.c_str(), cli_port);
+            LOG_GLOBAL_DEBUG("Client: %s:%d exit error!", cli_ip.c_str(), cli_port);
             break;
         }
     }
 
-    printf("Client: %s:%d exit successed!\n", cli_ip.c_str(), cli_port);
+    LOG_GLOBAL_DEBUG("Client: %s:%d exit successed!", cli_ip.c_str(), cli_port);
     delete cli_info;
     cli_info = nullptr;
 

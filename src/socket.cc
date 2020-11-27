@@ -7,7 +7,7 @@ Socket::Socket(void)
 
 }
 
-Socket::Socket(string ip, short port)
+Socket::Socket(string ip, uint16_t port)
 : is_enable_(false)
 {
     this->create_socket(ip, port);
@@ -61,7 +61,7 @@ Socket::get_socket(int &socket)
 }
 
 int 
-Socket::get_ip_info(string &ip, short &port)
+Socket::get_ip_info(string &ip, uint16_t &port)
 {
     if (is_enable_ == false) {
         LOG_WARN("Please create socket first.");
@@ -82,10 +82,8 @@ Socket::set_socket(int clisock, struct sockaddr_in *cliaddr, socklen_t *addrlen)
         return 1;
     }
 
-    socket_ = clisock;
-    is_enable_ = true;
     if (cliaddr == nullptr || addrlen == nullptr) {
-        return 0;
+        return 1;
     }
 
     char buf[128] = {0};
@@ -97,12 +95,14 @@ Socket::set_socket(int clisock, struct sockaddr_in *cliaddr, socklen_t *addrlen)
 
     ip_ = ret;
     port_ = ::ntohs(cliaddr->sin_port);
+    socket_ = clisock;
+    is_enable_ = true;
 
     return 0;
 }
 
 int 
-Socket::create_socket(string ip, short port)
+Socket::create_socket(string ip, uint16_t port)
 {
     if (is_enable_ == true) {
         LOG_WARN("create_socket failed, there's already opened a socket.");
@@ -115,7 +115,7 @@ Socket::create_socket(string ip, short port)
 
     int ret = ::inet_pton(AF_INET, ip_.c_str(), &addr_.sin_addr);
     if (ret  == 0) {
-        LOG_WARN("Incorrect format of IP address");
+        LOG_WARN("Incorrect format of IP address： %s", ip_.c_str());
         return 1;
     } else if (ret < 0) {
         LOG_ERROR("inet_pton: %s", strerror(errno));

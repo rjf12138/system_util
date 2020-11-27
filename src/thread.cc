@@ -102,7 +102,6 @@ WorkThread::run_handler(void)
             thread_cond_wait();
         }
         mutex_.unlock();
-
         if (state_ == WorkThread_RUNNING) {
             if (thread_pool_->get_task(task_) > 0) {
                 task_.state = THREAD_TASK_HANDLE;
@@ -113,7 +112,7 @@ WorkThread::run_handler(void)
 
         this->pause();
     }
-
+    // 从线程池中删除关闭的线程信息
     thread_pool_->remove_thread((int64_t)this);
 
     return 0;

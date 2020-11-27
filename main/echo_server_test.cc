@@ -19,12 +19,12 @@ void sig_int(int sig);
 int main(void)
 {
     if (signal(SIGINT, sig_int) == SIG_ERR) {
-        fprintf(stderr, "signal error!");
+        LOG_GLOBAL_DEBUG("signal error!");
         return 0;
     }
 
     if (signal(SIGIO, accept_exit) == SIG_ERR) {
-        fprintf(stderr, "signal error!");
+        LOG_GLOBAL_DEBUG("signal error!");
         return 0;
     }
 
@@ -49,8 +49,9 @@ int main(void)
         if (ret != 0) {
             break;
         }
-        printf("accept socket!");
+        LOG_GLOBAL_DEBUG("accept socket!");
         Socket *cli = new Socket;
+        cli->set_socket(cli_socket, &cliaddr, &size);
         Task task;
         task.exit_arg = cli;
         task.thread_arg = cli;
@@ -65,7 +66,7 @@ int main(void)
 
 void sig_int(int sig)
 {
-    std::cout << "Exit server!" << std::endl;
+    LOG_GLOBAL_DEBUG("Exit server!");
     server_exit = true;
     kill(getpid(), SIGIO);
 }
@@ -83,9 +84,9 @@ void *echo_handler(void *arg)
 
     Socket *cli_info = (Socket*)arg;
     string cli_ip;
-    short cli_port;
+    uint16_t cli_port;
     cli_info->get_ip_info(cli_ip, cli_port);
-    printf("Client: %s:%d connect！\n", cli_ip.c_str(), cli_port);
+    LOG_GLOBAL_DEBUG("Client: %s:%d connect！", cli_ip.c_str(), cli_port);
 
     ByteBuffer buff;
     while (cli_info->get_socket_state()) {
@@ -93,7 +94,7 @@ void *echo_handler(void *arg)
         if (ret > 0) {
             string str;
             buff.read_string(str);
-            printf("Client (%s:%d): %s", cli_ip.c_str(), cli_port, str.c_str());
+            LOG_GLOBAL_DEBUG("Client (%s:%d): %s", cli_ip.c_str(), cli_port, str.c_str());
             if (str == "quit") {
                 break;
             }
@@ -102,7 +103,7 @@ void *echo_handler(void *arg)
         }
     }
 
-    printf("Client: %s:%d exit!\n", cli_ip.c_str(), cli_port);
+    LOG_GLOBAL_DEBUG("Client: %s:%d exit!", cli_ip.c_str(), cli_port);
     delete cli_info;
     cli_info = nullptr;
 

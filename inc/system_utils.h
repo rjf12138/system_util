@@ -275,13 +275,13 @@ private:
 class Socket : public MsgRecord {
 public:
     Socket(void);
-    Socket(string ip, short port);
+    Socket(string ip, uint16_t port);
     ~Socket();
 
     // 设置不是由本类所创建的套接字
     int set_socket(int clisock, struct sockaddr_in *cliaddr = nullptr, socklen_t *addrlen = nullptr);
     // ip,port可以是本地的用于创建服务端程序，也可以是客户端连接到服务端IP和端口
-    int create_socket(string ip, short port);
+    int create_socket(string ip, uint16_t port);
 
     // 这里listen()合并了 bind()和listen
     int listen(void);
@@ -297,7 +297,7 @@ public:
     int send(ByteBuffer &buff, int buff_size, int flags);
 
     int get_socket(int &socket);
-    int get_ip_info(string &ip, short &port);
+    int get_ip_info(string &ip, uint16_t &port);
     bool get_socket_state(void) const {return is_enable_;}
     // 关闭套接字
     int close(void);
@@ -311,7 +311,7 @@ private:
     bool is_enable_;
     int socket_;
 
-    short port_;
+    uint16_t port_;
     string ip_;
 
     struct sockaddr_in addr_;

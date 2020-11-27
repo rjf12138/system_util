@@ -58,7 +58,7 @@ int Queue<T>::push(const T &data)
     }
     ++size_;
 
-    return 0;
+    return 1;
 }
 
 template<class T>
@@ -81,7 +81,7 @@ int Queue<T>::pop(T &data)
     delete del_node;
     del_node = nullptr;
 
-    return 0;
+    return 1;
 }
 
 
