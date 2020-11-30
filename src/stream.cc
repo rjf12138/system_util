@@ -156,6 +156,7 @@ Stream::read(ByteBuffer &buff, size_t buf_size)
         return 0;
     }
 
+    buff.resize(buf_size);
     size_t remain_size = buf_size;
     do {
         ssize_t ret = ::read(fd_, buff.get_write_buffer_ptr(), buff.get_cont_write_size());
@@ -163,9 +164,9 @@ Stream::read(ByteBuffer &buff, size_t buf_size)
             LOG_ERROR("read: %s", strerror(errno));
             return 0;
         }
-        
-        remain_size -= ret;
+        buff.update_write_pos(ret);
 
+        remain_size -= ret;
         if (ret == 0 || buff.idle_size() == 0) {
             break;
         }
@@ -198,7 +199,7 @@ Stream::write(ByteBuffer &buff, size_t buf_size)
         LOG_ERROR("write: haven't open any file!");
         return 0;
     }
-
+    
     size_t remain_size = buf_size;
     do {
         int ret = ::write(fd_, buff.get_read_buffer_ptr(), buff.get_cont_read_size());
@@ -206,6 +207,7 @@ Stream::write(ByteBuffer &buff, size_t buf_size)
             LOG_ERROR("write: %s", strerror(errno));
             return 0;
         }
+        buff.update_read_pos(ret);
 
         remain_size -= ret;
         if (ret == 0 || buff.idle_size() == 0) {
@@ -264,6 +266,7 @@ Stream::write_fmt(ByteBuffer &buff, const char *fmt, ...)
     va_end(arg_ptr);
 
     buff.write_bytes(tmp_buf, write_size);
+    delete[] tmp_buf;
 
     return write_size;
 }

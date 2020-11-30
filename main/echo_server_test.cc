@@ -94,12 +94,15 @@ void *echo_handler(void *arg)
         if (ret > 0) {
             string str;
             buff.read_string(str);
-            LOG_GLOBAL_DEBUG("Client (%s:%d): %s", cli_ip.c_str(), cli_port, str.c_str());
+            printf("Client (%s:%d): %s", cli_ip.c_str(), cli_port, str.c_str());
             if (str == "quit") {
                 break;
             }
 
             cli_info->send(buff, ret, 0);
+        } else {
+            LOG_GLOBAL_DEBUG("Client (%s:%d): Recv error break.", cli_ip.c_str(), cli_port);
+            break;
         }
     }
 

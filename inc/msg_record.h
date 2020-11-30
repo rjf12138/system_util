@@ -47,6 +47,9 @@ public:
     void set_stream_func(InfoLevel level, msg_to_stream_callback func);
     msg_to_stream_callback get_stream_func(InfoLevel level);
 
+public:
+    static MsgRecord g_log_msg;
+
 private:
     // 消息缓存
     vector<MsgContent> msg_info_;
@@ -68,14 +71,14 @@ private:
 
 #define GET_MSG(...)  this->get_msg_attr(LOG_LEVEL_INFO, __LINE__, __FILE__, __FUNCTION__, __VA_ARGS__)
 
-extern MsgRecord g_log_msg;
-#define LOG_GLOBAL_TRACE(...)  g_log_msg.print_msg(LOG_LEVEL_TRACE, __LINE__, __FILE__, __FUNCTION__, __VA_ARGS__)
-#define LOG_GLOBAL_DEBUG(...)  g_log_msg.print_msg(LOG_LEVEL_DEBUG, __LINE__, __FILE__, __FUNCTION__, __VA_ARGS__)
-#define LOG_GLOBAL_INFO(...)   g_log_msg.print_msg(LOG_LEVEL_INFO, __LINE__, __FILE__, __FUNCTION__, __VA_ARGS__)
-#define LOG_GLOBAL_WARN(...)   g_log_msg.print_msg(LOG_LEVEL_WARN, __LINE__, __FILE__, __FUNCTION__, __VA_ARGS__)
-#define LOG_GLOBAL_ERROR(...)  g_log_msg.print_msg(LOG_LEVEL_ERROR, __LINE__, __FILE__, __FUNCTION__, __VA_ARGS__)
-#define LOG_GLOBAL_FATAL(...)  g_log_msg.print_msg(LOG_LEVEL_FATAL, __LINE__, __FILE__, __FUNCTION__, __VA_ARGS__)
-#define SET_GLOBAL_CALLBACK(LEVEL, FUNC)  g_log_msg.set_stream_func(LEVEL, FUNC)
+
+#define LOG_GLOBAL_TRACE(...)  MsgRecord::g_log_msg.print_msg(LOG_LEVEL_TRACE, __LINE__, __FILE__, __FUNCTION__, __VA_ARGS__)
+#define LOG_GLOBAL_DEBUG(...)  MsgRecord::g_log_msg.print_msg(LOG_LEVEL_DEBUG, __LINE__, __FILE__, __FUNCTION__, __VA_ARGS__)
+#define LOG_GLOBAL_INFO(...)   MsgRecord::g_log_msg.print_msg(LOG_LEVEL_INFO, __LINE__, __FILE__, __FUNCTION__, __VA_ARGS__)
+#define LOG_GLOBAL_WARN(...)   MsgRecord::g_log_msg.print_msg(LOG_LEVEL_WARN, __LINE__, __FILE__, __FUNCTION__, __VA_ARGS__)
+#define LOG_GLOBAL_ERROR(...)  MsgRecord::g_log_msg.print_msg(LOG_LEVEL_ERROR, __LINE__, __FILE__, __FUNCTION__, __VA_ARGS__)
+#define LOG_GLOBAL_FATAL(...)  MsgRecord::g_log_msg.print_msg(LOG_LEVEL_FATAL, __LINE__, __FILE__, __FUNCTION__, __VA_ARGS__)
+#define SET_GLOBAL_CALLBACK(LEVEL, FUNC)  MsgRecord::g_log_msg.set_stream_func(LEVEL, FUNC)
 
 }
 

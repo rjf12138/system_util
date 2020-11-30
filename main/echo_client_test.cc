@@ -20,13 +20,13 @@ int main(void)
     ByteBuffer buff;
     string str;
 
-    std::size_t min_thread = 59;
-    std::size_t max_thread = 60;
+    std::size_t min_thread = 1;
+    std::size_t max_thread = 2;
     ThreadPoolConfig config = {min_thread, max_thread, 30, SHUTDOWN_ALL_THREAD_IMMEDIATELY};
     pool.init();
     pool.set_threadpool_config(config);
 
-    for (int i = 0; i < 10; ++i) {
+    for (std::size_t i = 0; i < min_thread; ++i) {
         Socket *cli = new Socket("127.0.0.1", 12138);
         Task task;
         task.exit_arg = cli;
@@ -63,7 +63,7 @@ void *echo_handler(void *arg)
         LOG_GLOBAL_DEBUG("Client: %s:%d connect failed!", cli_ip.c_str(), cli_port);
         return nullptr;
     }
-    LOG_GLOBAL_DEBUG("Client: %s:%d connect successed！", cli_ip.c_str(), cli_port);
+    LOG_GLOBAL_DEBUG("Client: %s:%d connect successed!", cli_ip.c_str(), cli_port);
 
     string data = "{\"data\": \"client\", \"num\":12138}";
     ByteBuffer buff;
@@ -85,6 +85,8 @@ void *echo_handler(void *arg)
             LOG_GLOBAL_DEBUG("Client: %s:%d exit error!", cli_ip.c_str(), cli_port);
             break;
         }
+
+        os_sleep(1000);
     }
 
     LOG_GLOBAL_DEBUG("Client: %s:%d exit successed!", cli_ip.c_str(), cli_port);

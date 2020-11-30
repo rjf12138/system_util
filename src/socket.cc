@@ -207,6 +207,7 @@ Socket::recv(ByteBuffer &buff, int buff_size, int flags)
         return 0;
     }
 
+    buff.resize(buff_size+1);
     size_t remain_size = buff_size;
     do {
         ssize_t ret = ::recv(socket_, buff.get_write_buffer_ptr(), buff.get_cont_write_size(), flags);
@@ -214,9 +215,9 @@ Socket::recv(ByteBuffer &buff, int buff_size, int flags)
             LOG_ERROR("recv: %s", strerror(errno));
             return 0;
         }
-        
-        remain_size -= ret;
+        buff.update_write_pos(ret);
 
+        remain_size -= ret;
         if (ret == 0 || buff.idle_size() == 0) {
             break;
         }
@@ -240,6 +241,7 @@ Socket::send(ByteBuffer &buff, int buff_size, int flags)
             LOG_ERROR("send: %s", strerror(errno));
             return 0;
         }
+        buff.update_read_pos(ret);
 
         remain_size -= ret;
         if (ret == 0 || buff.idle_size() == 0) {
