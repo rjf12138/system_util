@@ -292,13 +292,16 @@ public:
     // cliaddr: 返回的客户端IP信息
     // addrlen: 设置cliaddr 结构的大小
     int accept(int &clisock, struct sockaddr *cliaddr = nullptr, socklen_t *addrlen = nullptr);
-
     int recv(ByteBuffer &buff, int buff_size, int flags);
     int send(ByteBuffer &buff, int buff_size, int flags);
 
+    // 配置socket
+    int setnonblocking(void);
+    
     int get_socket(int &socket);
     int get_ip_info(string &ip, uint16_t &port);
     bool get_socket_state(void) const {return is_enable_;}
+
     // 关闭套接字
     int close(void);
     // 禁用套接字I/O

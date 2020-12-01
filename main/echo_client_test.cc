@@ -84,6 +84,8 @@ void *echo_handler(void *arg)
         if (recv_data != data) {
             LOG_GLOBAL_DEBUG("Client: %s:%d exit error!", cli_ip.c_str(), cli_port);
             break;
+        } else {
+            LOG_GLOBAL_DEBUG("Recv from server: %s", recv_data);
         }
 
         os_sleep(1000);

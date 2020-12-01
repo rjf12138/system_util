@@ -49,6 +49,25 @@ Socket::shutdown(int how)
 }
 
 int 
+Socket::setnonblocking(void)
+{
+    if (is_enable_ == false) {
+        LOG_WARN("Please create socket first.");
+        return 1;
+    }
+    
+    int old_option = fcntl(socket_, F_GETFL);
+    int new_option = old_option | O_NONBLOCK;
+    int ret = ::fcntl(socket_, F_SETFL, new_option);
+    if (ret < 0) {
+        LOG_ERROR("fcntl: %s", strerror(errno));
+        return errno;
+    }
+
+    return 0;
+}
+
+int 
 Socket::get_socket(int &socket)
 {
     if (is_enable_ == false) {
@@ -208,22 +227,14 @@ Socket::recv(ByteBuffer &buff, int buff_size, int flags)
     }
 
     buff.resize(buff_size+1);
-    size_t remain_size = buff_size;
-    do {
-        ssize_t ret = ::recv(socket_, buff.get_write_buffer_ptr(), buff.get_cont_write_size(), flags);
-        if (ret < 0) {
-            LOG_ERROR("recv: %s", strerror(errno));
-            return 0;
-        }
-        buff.update_write_pos(ret);
-
-        remain_size -= ret;
-        if (ret == 0 || buff.idle_size() == 0) {
-            break;
-        }
-    }  while (remain_size > 0);
+    ssize_t ret = ::recv(socket_, buff.get_write_buffer_ptr(), buff.get_cont_write_size(), flags);
+    if (ret < 0) {
+        LOG_ERROR("recv: %s", strerror(errno));
+        return errno;
+    }
+    buff.update_write_pos(ret);
    
-    return buff.data_size();
+    return 0;
 }
 
 int 
@@ -239,7 +250,7 @@ Socket::send(ByteBuffer &buff, int buff_size, int flags)
         int ret = ::send(socket_, buff.get_read_buffer_ptr(), buff.get_cont_read_size(), flags);
         if (ret == -1) {
             LOG_ERROR("send: %s", strerror(errno));
-            return 0;
+            return errno;
         }
         buff.update_read_pos(ret);
 
@@ -249,7 +260,7 @@ Socket::send(ByteBuffer &buff, int buff_size, int flags)
         }
     }  while (remain_size > 0);
    
-    return buff_size - remain_size;
+    return 0;
 }
 
 }

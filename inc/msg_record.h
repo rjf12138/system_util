@@ -25,14 +25,14 @@ struct MsgContent {
 
 /////////////////////////////////////////////////////
 // 默认标准输出函数
-int output_to_stdout(const string &msg);
+extern int output_to_stdout(const string &msg, void *arg = nullptr);
 
 // 默认标准出错函数
-int output_to_stderr(const string &msg);
+extern int output_to_stderr(const string &msg, void *arg = nullptr);
 
 /////////////////////////////////////////////////////
 // 如果是多线程使用同一个回调函数来写消息， 在函数中需要处理消息的同步写。
-typedef int (*msg_to_stream_callback)(const string &);
+typedef int (*msg_to_stream_callback)(const string &, void *arg);
 
 class MsgRecord {
 public:
@@ -41,7 +41,6 @@ public:
 
     virtual void print_msg(InfoLevel level, int line, string file_name, string func, const char *format, ...);
     virtual string get_msg_attr(InfoLevel level, int line, string file_name, string func, const char *format, ...);
-    virtual string assemble_msg(void);
     string level_convert(enum InfoLevel level);
 
     void set_stream_func(InfoLevel level, msg_to_stream_callback func);
@@ -51,8 +50,6 @@ public:
     static MsgRecord g_log_msg;
 
 private:
-    // 消息缓存
-    vector<MsgContent> msg_info_;
     // 输出函数变量 
     msg_to_stream_callback msg_to_stream_trace_;
     msg_to_stream_callback msg_to_stream_debug_;
