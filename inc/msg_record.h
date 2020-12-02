@@ -25,14 +25,27 @@ struct MsgContent {
 
 /////////////////////////////////////////////////////
 // 默认标准输出函数
-extern int output_to_stdout(const string &msg, void *arg = nullptr);
+extern int output_to_stdout(const string &msg);
 
 // 默认标准出错函数
-extern int output_to_stderr(const string &msg, void *arg = nullptr);
+extern int output_to_stderr(const string &msg);
 
 /////////////////////////////////////////////////////
+// 设置到终端输出字符串颜色
+enum StringColor {
+    StringColor_None,       // 什么都不设置
+    StringColor_Red,        // 红色
+    StringColor_Green,      // 绿色
+    StringColor_Yellow,     // 黄色
+    StringColor_Blue,       // 蓝色
+    StringColor_Magenta,    // 紫红色
+    StringColor_Cyan        // 蓝绿色
+};
+// 返回带颜色设置的字符串
+string set_string_color(const string &str, StringColor color);
+/////////////////////////////////////////////////////
 // 如果是多线程使用同一个回调函数来写消息， 在函数中需要处理消息的同步写。
-typedef int (*msg_to_stream_callback)(const string &, void *arg);
+typedef int (*msg_to_stream_callback)(const string &);
 
 class MsgRecord {
 public:

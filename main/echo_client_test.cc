@@ -20,23 +20,24 @@ int main(void)
     ByteBuffer buff;
     string str;
 
-    std::size_t min_thread = 1;
-    std::size_t max_thread = 2;
+    std::size_t min_thread = 250;
+    std::size_t max_thread = 260;
     ThreadPoolConfig config = {min_thread, max_thread, 30, SHUTDOWN_ALL_THREAD_IMMEDIATELY};
     pool.init();
     pool.set_threadpool_config(config);
 
-    for (std::size_t i = 0; i < min_thread; ++i) {
-        Socket *cli = new Socket("127.0.0.1", 12138);
-        Task task;
-        task.exit_arg = cli;
-        task.thread_arg = cli;
-        task.work_func = echo_handler;
-        task.exit_task = echo_exit;
+    while(true) {
+        for (std::size_t i = 0; i < min_thread; ++i) {
+            Socket *cli = new Socket("127.0.0.1", 12138);
+            Task task;
+            task.exit_arg = cli;
+            task.thread_arg = cli;
+            task.work_func = echo_handler;
+            task.exit_task = echo_exit;
 
-        pool.add_task(task);
+            pool.add_task(task);
+        }
     }
-
     pool.wait_thread();
 
     return 0;
@@ -81,14 +82,17 @@ void *echo_handler(void *arg)
         cli_info->recv(buff, ret, 0);
         string recv_data;
         buff.read_string(recv_data);
-        if (recv_data != data) {
-            LOG_GLOBAL_DEBUG("Client: %s:%d exit error!", cli_ip.c_str(), cli_port);
+        if (recv_data != data && recv_data != "quit") {
+            LOG_GLOBAL_ERROR("Client: %s:%d exit error!", cli_ip.c_str(), cli_port);
             break;
         } else {
-            LOG_GLOBAL_DEBUG("Recv from server: %s", recv_data);
+            LOG_GLOBAL_DEBUG("Recv from server: %s", recv_data.c_str());
+            if (recv_data == "quit") {
+                break;
+            }
         }
 
-        os_sleep(1000);
+        os_sleep(100);
     }
 
     LOG_GLOBAL_DEBUG("Client: %s:%d exit successed!", cli_ip.c_str(), cli_port);
