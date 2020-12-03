@@ -31,7 +31,11 @@ int main(void)
     ByteBuffer buff;
     string str;
 
+    std::size_t min_thread = 250;
+    std::size_t max_thread = 260;
+    ThreadPoolConfig config = {min_thread, max_thread, 30, SHUTDOWN_ALL_THREAD_IMMEDIATELY};
     pool.init();
+    pool.set_threadpool_config(config);
 
     Socket echo_server("127.0.0.1", 12138);
     echo_server.listen();
@@ -106,7 +110,8 @@ void *echo_handler(void *arg)
             break;
         }
     }
-
+    // 给2s时间把数据发送到客户端在关闭
+    os_sleep(2000);
     LOG_GLOBAL_DEBUG("Client: %s:%d exit!", cli_ip.c_str(), cli_port);
     delete cli_info;
     cli_info = nullptr;

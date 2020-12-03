@@ -296,8 +296,12 @@ public:
     int send(ByteBuffer &buff, int buff_size, int flags);
 
     // 配置socket
+    // 设置成非阻塞
     int setnonblocking(void);
+    // 设置成地址复用
+    int set_reuse_addr(void);
     
+    // 获取socket信息
     int get_socket(int &socket);
     int get_ip_info(string &ip, uint16_t &port);
     bool get_socket_state(void) const {return is_enable_;}

@@ -68,6 +68,24 @@ Socket::setnonblocking(void)
 }
 
 int 
+Socket::set_reuse_addr(void)
+{
+    if (is_enable_ == false) {
+        LOG_WARN("Please create socket first.");
+        return 1;
+    }
+
+    int enable = 1;
+    int ret = ::setsockopt(socket_,SOL_SOCKET,SO_REUSEADDR,(void*)&enable,sizeof(enable));
+    if (ret < 0) {
+        LOG_ERROR("setsockopt: %s", strerror(errno));
+        return errno;
+    }
+
+    return 0;
+}
+
+int 
 Socket::get_socket(int &socket)
 {
     if (is_enable_ == false) {

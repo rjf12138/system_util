@@ -38,7 +38,7 @@ void set_systemcall_message_output_callback(InfoLevel level, msg_to_stream_callb
 int os_sleep(int millisecond)
 {
 #ifdef __RJF_LINUX__
-    return usleep(millisecond);
+    return usleep(millisecond * 1000);
 #endif
 }
 

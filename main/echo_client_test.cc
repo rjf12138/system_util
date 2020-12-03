@@ -26,17 +26,16 @@ int main(void)
     pool.init();
     pool.set_threadpool_config(config);
 
-    while(true) {
-        for (std::size_t i = 0; i < min_thread; ++i) {
-            Socket *cli = new Socket("127.0.0.1", 12138);
-            Task task;
-            task.exit_arg = cli;
-            task.thread_arg = cli;
-            task.work_func = echo_handler;
-            task.exit_task = echo_exit;
+    for (std::size_t i = 0; i < min_thread; ++i) {
+        Socket *cli = new Socket("127.0.0.1", 12138);
+        cli->set_reuse_addr();
+        Task task;
+        task.exit_arg = cli;
+        task.thread_arg = cli;
+        task.work_func = echo_handler;
+        task.exit_task = echo_exit;
 
-            pool.add_task(task);
-        }
+        pool.add_task(task);
     }
     pool.wait_thread();
 
