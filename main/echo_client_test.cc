@@ -85,7 +85,7 @@ void *echo_handler(void *arg)
             LOG_GLOBAL_ERROR("Client: %s:%d exit error!", cli_ip.c_str(), cli_port);
             break;
         } else {
-            LOG_GLOBAL_DEBUG("Recv from server: %s", recv_data.c_str());
+            //LOG_GLOBAL_DEBUG("Recv from server: %s", recv_data.c_str());
             if (recv_data == "quit") {
                 break;
             }

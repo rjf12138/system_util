@@ -95,12 +95,12 @@ void *echo_handler(void *arg)
     ByteBuffer buff;
     while (cli_info->get_socket_state()) {
         int ret = cli_info->recv(buff, 2048, 0);
-        if (ret == 0) {
+        if (ret == 0 && buff.data_size() > 0) {
             string str;
             buff.read_string(str);
-            LOG_GLOBAL_DEBUG("Client (%s:%d): %s", cli_ip.c_str(), cli_port, str.c_str());
+            // LOG_GLOBAL_DEBUG("Client (%s:%d): %s", cli_ip.c_str(), cli_port, str.c_str());
             buff.write_string(str);
-            cli_info->send(buff, ret, 0);
+            cli_info->send(buff, str.size(), 0);
             
             if (str == "quit") {
                 break;
@@ -115,7 +115,7 @@ void *echo_handler(void *arg)
     LOG_GLOBAL_DEBUG("Client: %s:%d exit!", cli_ip.c_str(), cli_port);
     delete cli_info;
     cli_info = nullptr;
-
+    LOG_GLOBAL_DEBUG("Client: %s:%d closed!", cli_ip.c_str(), cli_port);
     return nullptr;
 }
 

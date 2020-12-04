@@ -252,7 +252,7 @@ Socket::recv(ByteBuffer &buff, int buff_size, int flags)
     }
     buff.update_write_pos(ret);
    
-    return 0;
+    return ret;
 }
 
 int 
@@ -268,7 +268,7 @@ Socket::send(ByteBuffer &buff, int buff_size, int flags)
         int ret = ::send(socket_, buff.get_read_buffer_ptr(), buff.get_cont_read_size(), flags);
         if (ret == -1) {
             LOG_ERROR("send: %s", strerror(errno));
-            return errno;
+            return -1;
         }
         buff.update_read_pos(ret);
 
@@ -278,7 +278,7 @@ Socket::send(ByteBuffer &buff, int buff_size, int flags)
         }
     }  while (remain_size > 0);
    
-    return 0;
+    return buff_size - remain_size;
 }
 
 }

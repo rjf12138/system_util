@@ -62,7 +62,7 @@ Thread::wait_thread(void)
 
 ////////////////////////////////////// WorkThread ///////////////////////////////////////
 WorkThread::WorkThread(ThreadPool *thread_pool, int idle_life)
-: idle_life_(idle_life), thread_pool_(thread_pool)
+: idle_life_(idle_life), remain_life_(idle_life), thread_pool_(thread_pool)
 {
     thread_id_ = (int64_t)this;
 #ifdef __RJF_LINUX__
@@ -252,13 +252,17 @@ ThreadPool::remove_thread(int64_t thread_id)
     mutex_.lock();
     auto remove_iter = idle_threads_.find(thread_id);
     if (remove_iter != idle_threads_.end()) {
-        delete remove_iter->second;
+        if (remove_iter->second != nullptr) {
+            delete remove_iter->second;
+        }
         idle_threads_.erase(remove_iter);
     }
 
     remove_iter = runing_threads_.find(thread_id);
     if (remove_iter != runing_threads_.end()) {
-        delete remove_iter->second;
+        if (remove_iter->second != nullptr) {
+            delete remove_iter->second;
+        }
         runing_threads_.erase(remove_iter);
     }
     mutex_.unlock();
