@@ -35,7 +35,7 @@ Thread::init(void)
     int ret = ::pthread_create(&thread_id_, NULL, create_func, (void*)this);
     if (ret != 0) {
         LOG_ERROR("pthread_create(): %s", strerror(ret));
-        return ret;
+        return -1;
     }
 #endif
 
@@ -53,7 +53,7 @@ Thread::wait_thread(void)
     int ret = ::pthread_join(thread_id_, NULL);
     if (ret != 0) {
         LOG_ERROR("pthread_join(): %s", strerror(ret));
-        return ret;
+        return -1;
     }
 #endif
 
@@ -289,7 +289,7 @@ ThreadPool::manage_work_threads(bool is_init)
             if (idle_threads_.size() > 0) {
                 idle_threads_.begin()->second->resume();
             } else {
-                if (runing_threads_.size() < thread_pool_config_.max_thread_num) {
+                if (runing_threads_.size() <= thread_pool_config_.max_thread_num) {
                     WorkThread *work_thread = new WorkThread(this);
                     work_thread->init();
                     idle_threads_[(int64_t)work_thread] = work_thread;
@@ -304,10 +304,12 @@ ThreadPool::manage_work_threads(bool is_init)
         }
     }
 
-    for (auto iter = idle_threads_.begin(); iter != idle_threads_.end(); ++iter) {
-        int lifetime = iter->second->adjust_thread_life(1);
+    for (auto iter = idle_threads_.begin(); iter != idle_threads_.end();) {
+        auto stop_iter = iter++; // stop_handler 可能会改变idle_threads从而影响到当前的iter,先提前自增
+
+        int lifetime = stop_iter->second->adjust_thread_life(1);
         if (lifetime <= 0) {
-            iter->second->stop_handler(); // 关闭多余的空闲线程
+            stop_iter->second->stop_handler(); // 关闭多余的空闲线程
         }
     }
 
@@ -408,8 +410,9 @@ ThreadPool::shutdown_all_threads(void)
         }
     } else {
         // 停止所有正在处理任务的线程
-        for (auto iter = runing_threads_.begin(); iter != runing_threads_.end(); ++iter) {
-            iter->second->stop_handler();
+        for (auto iter = runing_threads_.begin(); iter != runing_threads_.end();) {
+            auto stop_iter = iter++;
+            stop_iter->second->stop_handler();
         }
     }
 
@@ -417,8 +420,9 @@ ThreadPool::shutdown_all_threads(void)
         LOG_ERROR("shutdown threads error: %d threads still running", runing_threads_.size());
     }
 
-    for (auto iter = idle_threads_.begin(); iter != idle_threads_.end(); ++iter) {
-        iter->second->stop_handler();
+    for (auto iter = idle_threads_.begin(); iter != idle_threads_.end(); ) {
+        auto stop_iter = iter++;
+        stop_iter->second->stop_handler();
     }
 
     return 0;

@@ -17,6 +17,9 @@ int main(void)
         return 0;
     }
 
+    Stream write_file;
+    write_file.open("./file.txt");
+
     ByteBuffer buff;
     string str;
 
@@ -28,13 +31,19 @@ int main(void)
 
     for (std::size_t i = 0; i < min_thread; ++i) {
         Socket *cli = new Socket("127.0.0.1", 12138);
-        cli->set_reuse_addr();
         Task task;
         task.exit_arg = cli;
         task.thread_arg = cli;
         task.work_func = echo_handler;
         task.exit_task = echo_exit;
 
+        if (cli->get_socket_state() == false) {
+            delete cli;
+            cli = nullptr;
+            continue;
+        }
+        write_file.write_file_fmt("%d\n", cli->get_socket());
+        os_sleep(100);
         pool.add_task(task);
     }
     pool.wait_thread();
@@ -60,10 +69,11 @@ void *echo_handler(void *arg)
     cli_info->get_ip_info(cli_ip, cli_port);
 
     if (cli_info->connect() != 0) {
-        LOG_GLOBAL_DEBUG("Client: %s:%d connect failed!", cli_ip.c_str(), cli_port);
+        LOG_GLOBAL_ERROR("Client: %s:%d connect failed!", cli_ip.c_str(), cli_port);
         return nullptr;
     }
     LOG_GLOBAL_DEBUG("Client: %s:%d connect successed!", cli_ip.c_str(), cli_port);
+    cli_info->set_reuse_addr();
 
     string data = "{\"data\": \"client\", \"num\":12138}";
     ByteBuffer buff;
@@ -82,7 +92,8 @@ void *echo_handler(void *arg)
         string recv_data;
         buff.read_string(recv_data);
         if (recv_data != data && recv_data != "quit") {
-            LOG_GLOBAL_ERROR("Client: %s:%d exit error!", cli_ip.c_str(), cli_port);
+            LOG_GLOBAL_DEBUG("Recv from server: %s", recv_data.c_str());
+            LOG_GLOBAL_WARN("Client: %s:%d exit error!", cli_ip.c_str(), cli_port);
             break;
         } else {
             //LOG_GLOBAL_DEBUG("Recv from server: %s", recv_data.c_str());
@@ -91,7 +102,7 @@ void *echo_handler(void *arg)
             }
         }
 
-        os_sleep(100);
+        // os_sleep(100);
     }
 
     LOG_GLOBAL_DEBUG("Client: %s:%d exit successed!", cli_ip.c_str(), cli_port);

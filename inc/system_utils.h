@@ -229,6 +229,7 @@ public:
     // 根据文件描述符打开文件
     // 默认退出时不关闭文件描述符
     int set_fd(int fd, bool open_when_exit = true);
+    int get_fd(void) const {return fd_;};
 
     // 返回文件信息
     int fileinfo(struct stat &file_info);
@@ -256,10 +257,12 @@ public:
     // 从某一位置写数据
     ssize_t write_to_pos(ByteBuffer &buff, size_t buf_size ,off_t pos, int whence);
 
-    // 格式化读
-    ssize_t read_fmt(ByteBuffer &buff, const char *fmt, ...);
-    // 格式化写
-    ssize_t write_fmt(ByteBuffer &buff, const char *fmt, ...);
+    // 格式化读/写到缓存中
+    static ssize_t read_buf_fmt(ByteBuffer &buff, const char *fmt, ...);
+    static ssize_t write_buf_fmt(ByteBuffer &buff, const char *fmt, ...);
+
+    // 格式化写到文件中
+    ssize_t write_file_fmt(const char *fmt, ...);
 
 private:
     int fd_;
@@ -302,7 +305,7 @@ public:
     int set_reuse_addr(void);
     
     // 获取socket信息
-    int get_socket(int &socket);
+    int get_socket(void);
     int get_ip_info(string &ip, uint16_t &port);
     bool get_socket_state(void) const {return is_enable_;}
 

@@ -26,7 +26,7 @@ Socket::close(void)
         int ret = ::close(socket_);
         if (ret < 0) {
             LOG_ERROR("close failed: %s", strerror(errno));
-            return 1;
+            return -1;
         }
     }
 
@@ -41,7 +41,7 @@ Socket::shutdown(int how)
         if (ret < 0) {
             is_enable_ = false;
             LOG_ERROR("shutdown failed: %s", strerror(errno));
-            return 1;
+            return -1;
         }
     }
 
@@ -53,7 +53,7 @@ Socket::setnonblocking(void)
 {
     if (is_enable_ == false) {
         LOG_WARN("Please create socket first.");
-        return 1;
+        return -1;
     }
     
     int old_option = fcntl(socket_, F_GETFL);
@@ -61,7 +61,7 @@ Socket::setnonblocking(void)
     int ret = ::fcntl(socket_, F_SETFL, new_option);
     if (ret < 0) {
         LOG_ERROR("fcntl: %s", strerror(errno));
-        return errno;
+        return -1;
     }
 
     return 0;
@@ -72,29 +72,28 @@ Socket::set_reuse_addr(void)
 {
     if (is_enable_ == false) {
         LOG_WARN("Please create socket first.");
-        return 1;
+        return -1;
     }
 
     int enable = 1;
     int ret = ::setsockopt(socket_,SOL_SOCKET,SO_REUSEADDR,(void*)&enable,sizeof(enable));
     if (ret < 0) {
         LOG_ERROR("setsockopt: %s", strerror(errno));
-        return errno;
+        return -1;
     }
 
     return 0;
 }
 
 int 
-Socket::get_socket(int &socket)
+Socket::get_socket(void)
 {
     if (is_enable_ == false) {
         LOG_WARN("Please create socket first.");
-        return 1;
+        return -1;
     }
-
-    socket = socket_;
-    return 0;
+    
+    return socket_;
 }
 
 int 
@@ -102,7 +101,7 @@ Socket::get_ip_info(string &ip, uint16_t &port)
 {
     if (is_enable_ == false) {
         LOG_WARN("Please create socket first.");
-        return 1;
+        return -1;
     }
 
     ip = ip_;
@@ -116,18 +115,18 @@ Socket::set_socket(int clisock, struct sockaddr_in *cliaddr, socklen_t *addrlen)
 {
     if (is_enable_ == true) {
         LOG_WARN("set_socket failed, there's already opened a socket.");
-        return 1;
+        return -1;
     }
 
     if (cliaddr == nullptr || addrlen == nullptr) {
-        return 1;
+        return -1;
     }
 
     char buf[128] = {0};
     const char *ret = ::inet_ntop(AF_INET, &(cliaddr->sin_addr), buf, *addrlen);
     if (ret == nullptr) {
         LOG_ERROR("inet_ntop: %s", strerror(errno));
-        return 1;
+        return -1;
     }
 
     ip_ = ret;
@@ -143,7 +142,7 @@ Socket::create_socket(string ip, uint16_t port)
 {
     if (is_enable_ == true) {
         LOG_WARN("create_socket failed, there's already opened a socket.");
-        return 1;
+        return -1;
     }
 
     ip_ = ip;
@@ -153,10 +152,10 @@ Socket::create_socket(string ip, uint16_t port)
     int ret = ::inet_pton(AF_INET, ip_.c_str(), &addr_.sin_addr);
     if (ret  == 0) {
         LOG_WARN("Incorrect format of IP address： %s", ip_.c_str());
-        return 1;
+        return -1;
     } else if (ret < 0) {
         LOG_ERROR("inet_pton: %s", strerror(errno));
-        return 1;
+        return -1;
     }
 
     
@@ -167,7 +166,7 @@ Socket::create_socket(string ip, uint16_t port)
     socket_ = ::socket(AF_INET, SOCK_STREAM, 0);
     if (socket_ < 0) {
         LOG_ERROR("socket: %s", strerror(errno));
-        return 1;
+        return -1;
     }
 
     is_enable_ = true;
@@ -181,21 +180,21 @@ Socket::listen(void)
 {
     if (is_enable_ == false) {
         LOG_WARN("Please create socket first.");
-        return 1;
+        return -1;
     }
 
     int ret = ::bind(socket_, (sockaddr*)&addr_, sizeof(addr_));
     if (ret < 0) {
         LOG_ERROR("bind: %s", strerror(errno));
         this->close();
-        return 1;
+        return -1;
     }
 
     ret = ::listen(socket_, 5);
     if (ret < 0) {
         LOG_ERROR("listen: %s", strerror(errno));
         this->close();
-        return 1;
+        return -1;
     }
 
     return 0;
@@ -205,14 +204,14 @@ int Socket::connect(void)
 {
     if (is_enable_ == false) {
         LOG_WARN("Please create socket first.");
-        return 1;
+        return -1;
     }
 
     int ret = ::connect(socket_, (sockaddr*)&addr_, sizeof(addr_));
     if (ret < 0) {
         LOG_ERROR("connect: %s", strerror(errno));
         this->close();
-        return 1;
+        return -1;
     }
 
     return 0;
@@ -222,14 +221,14 @@ int Socket::accept(int &clisock, struct sockaddr *cliaddr, socklen_t *addrlen)
 {
     if (is_enable_ == false) {
         LOG_WARN("Please create socket first.");
-        return 1;
+        return -1;
     }
 
     int ret = ::accept(socket_, cliaddr, addrlen);
     if (ret < 0) {
         LOG_ERROR("accept: %s", strerror(errno));
         this->close();
-        return 1; 
+        return -1; 
     }
     clisock = ret;
 
@@ -241,14 +240,14 @@ Socket::recv(ByteBuffer &buff, int buff_size, int flags)
 {
     if (is_enable_ == false) {
         LOG_WARN("Please create socket first.");
-        return 0;
+        return -1;
     }
 
     buff.resize(buff_size+1);
     ssize_t ret = ::recv(socket_, buff.get_write_buffer_ptr(), buff.get_cont_write_size(), flags);
     if (ret < 0) {
         LOG_ERROR("recv: %s", strerror(errno));
-        return errno;
+        return -1;
     }
     buff.update_write_pos(ret);
    
@@ -260,7 +259,7 @@ Socket::send(ByteBuffer &buff, int buff_size, int flags)
 {
     if (is_enable_ == false) {
         LOG_WARN("Please create socket first.");
-        return 0;
+        return -1;
     }
 
     size_t remain_size = buff_size;

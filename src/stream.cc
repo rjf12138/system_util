@@ -23,7 +23,7 @@ Stream::open(const string file_path, int flag, int file_right)
 {
     if (file_path.empty()) {
         LOG_WARN("file_path is empty");
-        return 1;
+        return -1;
     }
 
     int fd = -1;
@@ -37,7 +37,7 @@ Stream::open(const string file_path, int flag, int file_right)
 
     if (fd == -1) {
         LOG_ERROR("open: %s", strerror(errno));
-        return 1;
+        return -1;
     }
     // 获取文件信息
     struct stat info;
@@ -45,7 +45,7 @@ Stream::open(const string file_path, int flag, int file_right)
     if (ret == -1)
     {
         LOG_ERROR("stat: %s", strerror(errno));
-        return 1;
+        return -1;
     }
 
     // 如果之前有打开文件，先关闭之前的文件
@@ -62,7 +62,7 @@ int
 Stream::set_fd(int fd, bool open_on_exit)
 {
     if (this->check_fd(fd) == -1) {
-        return 1;
+        return -1;
     }
     this->close_file();
 
@@ -71,7 +71,7 @@ Stream::set_fd(int fd, bool open_on_exit)
     if (ret == -1) {
         file_open_flag_ = false;
         LOG_ERROR("fstat: %s", strerror(errno));
-        return 1;
+        return -1;
     }
     open_on_exit_ = open_on_exit;
 
@@ -85,7 +85,7 @@ Stream::fileinfo(struct stat &file_info)
         file_info = file_info_;
     } else {
         LOG_ERROR("haven't open any file");
-        return 1;
+        return -1;
     }
 
     return 0;
@@ -111,7 +111,7 @@ Stream::check_fd(int fd)
     int ret = fstat(fd, &info);
     if (ret == -1) {
         LOG_ERROR("fstat: %s", strerror(errno));
-        return 1;
+        return -1;
     }
 
     return 0;
@@ -122,7 +122,7 @@ Stream::clear_file(void)
 {
     int ret = ftruncate64(fd_, 0);
     if (ret < 0) {
-        return 1;
+        return -1;
     }
     // 将文件偏移量设为0，防止出现文件空洞
     this->seek(0, SEEK_SET);
@@ -136,7 +136,7 @@ Stream::seek(off_t offset, int whence)
     off_t pos = lseek(fd_, offset, whence);
     if (pos == -1) {
         LOG_ERROR("lseek: %s", strerror(errno));
-        return 1;
+        return -1;
     }
 
     return pos;
@@ -153,7 +153,7 @@ Stream::read(ByteBuffer &buff, size_t buf_size)
 {
     if (!file_open_flag_) {
         LOG_WARN("Stream::read: haven't open any file!");
-        return 0;
+        return -1;
     }
 
     buff.resize(buf_size);
@@ -162,7 +162,7 @@ Stream::read(ByteBuffer &buff, size_t buf_size)
         ssize_t ret = ::read(fd_, buff.get_write_buffer_ptr(), buff.get_cont_write_size());
         if (ret < 0) {
             LOG_ERROR("read: %s", strerror(errno));
-            return 0;
+            return -1;
         }
         buff.update_write_pos(ret);
 
@@ -180,11 +180,11 @@ Stream::read_from_pos(ByteBuffer &buff, size_t buf_size, off_t pos, int whence)
 {
     if (!file_open_flag_) {
         LOG_ERROR("read_from_pos: haven't open any file!");
-        return 0;
+        return -1;
     }
 
     if (this->seek(pos, whence) <= 0) {
-        return 0;
+        return -1;
     }
 
     int ret_size = this->read(buff, buf_size);
@@ -205,7 +205,7 @@ Stream::write(ByteBuffer &buff, size_t buf_size)
         int ret = ::write(fd_, buff.get_read_buffer_ptr(), buff.get_cont_read_size());
         if (ret == -1) {
             LOG_ERROR("write: %s", strerror(errno));
-            return 0;
+            return -1;
         }
         buff.update_read_pos(ret);
 
@@ -223,12 +223,12 @@ Stream::write_to_pos(ByteBuffer &buff, size_t buf_size ,off_t pos, int whence)
 {
     if (!file_open_flag_) {
         LOG_ERROR("write_to_pos: haven't open any file!");
-        return 0;
+        return -1;
     }
 
     if (this->seek(pos, whence) == -1) {
         LOG_ERROR("seek: %s!\n", strerror(errno));
-        return 0;
+        return -1;
     }
 
     int ret_size = this->write(buff, buf_size);
@@ -237,7 +237,7 @@ Stream::write_to_pos(ByteBuffer &buff, size_t buf_size ,off_t pos, int whence)
 
 
 ssize_t 
-Stream::read_fmt(ByteBuffer &buff, const char *fmt, ...)
+Stream::read_buf_fmt(ByteBuffer &buff, const char *fmt, ...)
 {
     const int buf_size = 4096;
     char *tmp_buf = new  char[buf_size];
@@ -254,7 +254,7 @@ Stream::read_fmt(ByteBuffer &buff, const char *fmt, ...)
 }
 
 ssize_t 
-Stream::write_fmt(ByteBuffer &buff, const char *fmt, ...)
+Stream::write_buf_fmt(ByteBuffer &buff, const char *fmt, ...)
 {
     const int buf_size = 4096;
     char *tmp_buf = new  char[buf_size];
@@ -269,6 +269,22 @@ Stream::write_fmt(ByteBuffer &buff, const char *fmt, ...)
     delete[] tmp_buf;
 
     return write_size;
+}
+
+ssize_t 
+Stream::write_file_fmt(const char *fmt, ...)
+{
+    const int buf_size = 4096;
+    char *tmp_buf = new  char[buf_size];
+    memset(tmp_buf, 0, buf_size);
+
+    va_list arg_ptr;
+    va_start(arg_ptr,fmt);
+    int write_size = vsnprintf(tmp_buf, buf_size, fmt, arg_ptr);
+    va_end(arg_ptr);
+
+    return ::write(fd_, tmp_buf, write_size);
+
 }
 
 }

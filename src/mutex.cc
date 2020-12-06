@@ -36,7 +36,7 @@ Mutex::lock(void)
     int ret = ::pthread_mutex_lock(&mutex_);
     if (ret != 0) {
         LOG_ERROR("pthread_mutex_lock(): %s", strerror(ret));
-        return ret;
+        return -1;
     }
 #endif
 
@@ -50,7 +50,7 @@ Mutex::trylock(void)
     int ret = ::pthread_mutex_trylock(&mutex_);
     if (ret != 0) {
         LOG_ERROR("pthread_mutex_trylock(): %s", strerror(ret));
-        return ret;
+        return -1;
     }
 #endif
     return 0;
@@ -63,7 +63,7 @@ Mutex::unlock(void)
     int ret = ::pthread_mutex_unlock(&mutex_);
     if (ret != 0) {
         LOG_ERROR("pthread_mutex_unlock(): %s", strerror(ret));
-        return ret;
+        return -1;
     }
 #endif
     return 0;

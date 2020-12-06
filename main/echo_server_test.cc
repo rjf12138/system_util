@@ -38,6 +38,7 @@ int main(void)
     pool.set_threadpool_config(config);
 
     Socket echo_server("127.0.0.1", 12138);
+    echo_server.set_reuse_addr();
     echo_server.listen();
 
     int cli_socket;
@@ -95,7 +96,7 @@ void *echo_handler(void *arg)
     ByteBuffer buff;
     while (cli_info->get_socket_state()) {
         int ret = cli_info->recv(buff, 2048, 0);
-        if (ret == 0 && buff.data_size() > 0) {
+        if (ret > 0) {
             string str;
             buff.read_string(str);
             // LOG_GLOBAL_DEBUG("Client (%s:%d): %s", cli_ip.c_str(), cli_port, str.c_str());
@@ -106,7 +107,7 @@ void *echo_handler(void *arg)
                 break;
             }
         } else {
-            LOG_GLOBAL_DEBUG("Client (%s:%d): Recv error break.", cli_ip.c_str(), cli_port);
+            LOG_GLOBAL_WARN("Client (%s:%d): Recv error break.", cli_ip.c_str(), cli_port);
             break;
         }
     }
