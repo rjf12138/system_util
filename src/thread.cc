@@ -104,6 +104,7 @@ WorkThread::run_handler(void)
         mutex_.unlock();
         if (state_ == WorkThread_RUNNING) {
             if (thread_pool_->get_task(task_) > 0) {
+                LOG_DEBUG("RUNNING THREAD");
                 task_.state = THREAD_TASK_HANDLE;
                 task_.work_func(task_.thread_arg);
                 task_.state = THREAD_TASK_COMPLETE;
@@ -213,7 +214,7 @@ ThreadPool::start_handler(void)
 
     return 0;
 }
-
+int i = 0;
 int 
 ThreadPool::add_task(Task &task)
 {
@@ -221,7 +222,15 @@ ThreadPool::add_task(Task &task)
     if (exit_) {
         return 0;
     }
-    return tasks_.push(task);
+    task_mutex_.lock();
+    int ret = tasks_.push(task);
+    LOG_DEBUG("add_task---locked");
+    ++i;
+    task_mutex_.unlock();
+    LOG_DEBUG("add_task---unlocked");
+    --i;
+
+    return ret;
 }
 
 int 
@@ -231,17 +240,30 @@ ThreadPool::add_priority_task(Task &task)
     if (exit_) {
         return 0;
     }
-    return priority_tasks_.push(task);
+    task_mutex_.lock();
+    int ret = priority_tasks_.push(task);
+    LOG_DEBUG("add_priority_task---locked");
+    task_mutex_.unlock();
+    LOG_DEBUG("add_priority_task---unlocked");
+
+    return ret;
 }
 
 int 
 ThreadPool::get_task(Task &task)
 {
+    LOG_DEBUG("get_task---wait lock: %s", task_mutex_.get_state()?"true":"false");
+    task_mutex_.lock();
     if (priority_tasks_.size() != 0) {
         return priority_tasks_.pop(task);
     } else {
         return tasks_.pop(task);
     }
+    LOG_DEBUG("get_task---locked");
+    ++i;
+    task_mutex_.unlock();
+    LOG_DEBUG("get_task---unlocked");
+    --i;
 
     return 0;
 }
@@ -249,7 +271,7 @@ ThreadPool::get_task(Task &task)
 int 
 ThreadPool::remove_thread(int64_t thread_id)
 {
-    mutex_.lock();
+    thread_mutex_.lock();
     auto remove_iter = idle_threads_.find(thread_id);
     if (remove_iter != idle_threads_.end()) {
         if (remove_iter->second != nullptr) {
@@ -265,7 +287,7 @@ ThreadPool::remove_thread(int64_t thread_id)
         }
         runing_threads_.erase(remove_iter);
     }
-    mutex_.unlock();
+    thread_mutex_.unlock();
 
     return 0;
 }
@@ -289,7 +311,7 @@ ThreadPool::manage_work_threads(bool is_init)
             if (idle_threads_.size() > 0) {
                 idle_threads_.begin()->second->resume();
             } else {
-                if (runing_threads_.size() <= thread_pool_config_.max_thread_num) {
+                if (runing_threads_.size() < thread_pool_config_.max_thread_num) {
                     WorkThread *work_thread = new WorkThread(this);
                     work_thread->init();
                     idle_threads_[(int64_t)work_thread] = work_thread;
@@ -297,7 +319,7 @@ ThreadPool::manage_work_threads(bool is_init)
                     continue;
                 } else {
                     // 可分配的线程数已经达到最大
-                    LOG_INFO("run out of threads: running threads: %d, max threads: %d", runing_threads_.size(), thread_pool_config_.max_thread_num);
+                    LOG_WARN("run out of threads: running threads: %d, max threads: %d", runing_threads_.size(), thread_pool_config_.max_thread_num);
                     break;
                 }
             }
@@ -319,25 +341,24 @@ ThreadPool::manage_work_threads(bool is_init)
 void 
 ThreadPool::thread_move_to_idle_map(int64_t thread_id)
 {
-    mutex_.lock();
+    thread_mutex_.lock();
     auto iter = runing_threads_.find(thread_id);
     if (iter == runing_threads_.end()) {
-        mutex_.unlock();
         LOG_WARN("Can't find thread(thread_id: %ld) at runing_threads", thread_id);
-        mutex_.unlock();
+        thread_mutex_.unlock();
         return ;
     }
 
     if (idle_threads_.find(thread_id) != idle_threads_.end()) {
         LOG_WARN("There is exists a thread(thread_id: %ld) at idle_threads", thread_id);
-        mutex_.unlock();
+        thread_mutex_.unlock();
         return ;
     }
 
     idle_threads_[thread_id] = iter->second;
     runing_threads_.erase(iter);
 
-    mutex_.unlock();
+    thread_mutex_.unlock();
 
     return ;
 }
@@ -345,24 +366,24 @@ ThreadPool::thread_move_to_idle_map(int64_t thread_id)
 void 
 ThreadPool::thread_move_to_running_map(int64_t thread_id)
 {
-    mutex_.lock();
+    thread_mutex_.lock();
     auto iter = idle_threads_.find(thread_id);
     if (iter == idle_threads_.end()) {
         LOG_WARN("Can't find thread(thread_id: %ld) at idle_threads", thread_id);
-        mutex_.unlock();
+        thread_mutex_.unlock();
         return ;
     }
 
     if (runing_threads_.find(thread_id) != runing_threads_.end()) {
         LOG_WARN("There is exists a thread(thread_id: %ld) at runing_threads", thread_id);
-        mutex_.unlock();
+        thread_mutex_.unlock();
         return ;
     }
 
     runing_threads_[thread_id] = iter->second;
     idle_threads_.erase(iter);
 
-    mutex_.unlock();
+    thread_mutex_.unlock();
 
     return ;
 }
@@ -371,13 +392,13 @@ int
 ThreadPool::set_threadpool_config(const ThreadPoolConfig &config)
 {
 
-    if (config.min_thread_num <= 0 || config.min_thread_num > MAX_THREADS_NUM) {
+    if (config.min_thread_num < 0 || config.min_thread_num > MAX_THREADS_NUM) {
         LOG_WARN("min thread num is out of range --- %d", config.min_thread_num);
     } else {
         thread_pool_config_.min_thread_num =  config.min_thread_num;
     }
 
-    if (config.max_thread_num <= config.min_thread_num || config.max_thread_num > MAX_THREADS_NUM) {
+    if (config.max_thread_num < config.min_thread_num || config.max_thread_num > MAX_THREADS_NUM) {
         LOG_WARN("max thread num is out of range --- %d", config.max_thread_num);
     } else {
         thread_pool_config_.max_thread_num =  config.max_thread_num;

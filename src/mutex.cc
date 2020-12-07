@@ -10,7 +10,7 @@ Mutex::Mutex(void)
     this->set_stream_func(LOG_LEVEL_WARN, g_msg_to_stream_warn);
     this->set_stream_func(LOG_LEVEL_ERROR, g_msg_to_stream_error);
     this->set_stream_func(LOG_LEVEL_FATAL, g_msg_to_stream_fatal);
-
+    state_ = false;
 #ifdef __RJF_LINUX__
     int ret = ::pthread_mutex_init(&mutex_, NULL);
     if (ret != 0) {
@@ -39,7 +39,7 @@ Mutex::lock(void)
         return -1;
     }
 #endif
-
+    state_ = true;
     return 0;
 }
 
@@ -53,6 +53,8 @@ Mutex::trylock(void)
         return -1;
     }
 #endif
+    state_ = true;
+
     return 0;
 }
 
@@ -66,6 +68,8 @@ Mutex::unlock(void)
         return -1;
     }
 #endif
+    state_ = false;
+
     return 0;
 }
 

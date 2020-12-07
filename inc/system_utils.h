@@ -37,11 +37,13 @@ public:
     virtual int trylock(void);
     virtual int unlock(void);
 
+    virtual bool get_state(void) {return state_;}
     virtual int get_errno(void) { return errno_;}
 #ifdef __RJF_LINUX__
     pthread_mutex_t* get_mutex(void) {return &mutex_;}
 #endif
 private:
+    bool state_;
     int errno_;
 #ifdef __RJF_LINUX__
     pthread_mutex_t mutex_;
@@ -206,7 +208,8 @@ private:
     bool exit_;
     ThreadPoolConfig thread_pool_config_;// 多余的空闲线程会被杀死，直到数量达到最小允许的线程数为止。单位：秒
 
-    Mutex mutex_;
+    Mutex thread_mutex_;
+    Mutex task_mutex_;
 
     Queue<Task> tasks_;   // 普通任务队列
     Queue<Task> priority_tasks_; // 优先任务队列

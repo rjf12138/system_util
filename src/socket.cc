@@ -209,7 +209,7 @@ int Socket::connect(void)
 
     int ret = ::connect(socket_, (sockaddr*)&addr_, sizeof(addr_));
     if (ret < 0) {
-        LOG_ERROR("connect: %s", strerror(errno));
+        LOG_ERROR("connect: %s. socket: %d", strerror(errno), socket_);
         this->close();
         return -1;
     }

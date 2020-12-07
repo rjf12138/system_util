@@ -7,6 +7,7 @@ void *echo_handler(void *arg);
 void *echo_exit(void *arg);
 
 ThreadPool pool;
+Stream write_file;
 
 void sig_int(int sig);
 
@@ -17,14 +18,12 @@ int main(void)
         return 0;
     }
 
-    Stream write_file;
     write_file.open("./file.txt");
-
     ByteBuffer buff;
     string str;
 
-    std::size_t min_thread = 250;
-    std::size_t max_thread = 260;
+    std::size_t min_thread = 5;
+    std::size_t max_thread = 5;
     ThreadPoolConfig config = {min_thread, max_thread, 30, SHUTDOWN_ALL_THREAD_IMMEDIATELY};
     pool.init();
     pool.set_threadpool_config(config);
@@ -42,8 +41,7 @@ int main(void)
             cli = nullptr;
             continue;
         }
-        write_file.write_file_fmt("%d\n", cli->get_socket());
-        os_sleep(100);
+        write_file.write_file_fmt("create: %d\n", cli->get_socket());
         pool.add_task(task);
     }
     pool.wait_thread();
@@ -63,21 +61,20 @@ void *echo_handler(void *arg)
         return nullptr;
     }
 
+    string data = "{\"data\": \"client\", \"num\":12138}";
+    ByteBuffer buff;
+
     Socket *cli_info = (Socket*)arg;
     string cli_ip;
     uint16_t cli_port;
     cli_info->get_ip_info(cli_ip, cli_port);
-
+    write_file.write_file_fmt("connect: %d\n", cli_info->get_socket());
     if (cli_info->connect() != 0) {
-        LOG_GLOBAL_ERROR("Client: %s:%d connect failed!", cli_ip.c_str(), cli_port);
-        return nullptr;
+        LOG_GLOBAL_ERROR("Client: %s:%d sockeid: %d connect failed!", cli_ip.c_str(), cli_port, cli_info->get_socket());
+        goto end;
     }
-    LOG_GLOBAL_DEBUG("Client: %s:%d connect successed!", cli_ip.c_str(), cli_port);
-    cli_info->set_reuse_addr();
-
-    string data = "{\"data\": \"client\", \"num\":12138}";
-    ByteBuffer buff;
-    
+    LOG_GLOBAL_DEBUG("Client: %s:%d sockeid: %d connect successed!", cli_ip.c_str(), cli_port, cli_info->get_socket());
+    cli_info->set_reuse_addr();    
 
     for (int i = 0; i <= 10 && cli_info->get_socket_state(); ++i) {
         buff.clear();
@@ -104,7 +101,7 @@ void *echo_handler(void *arg)
 
         // os_sleep(100);
     }
-
+end:
     LOG_GLOBAL_DEBUG("Client: %s:%d exit successed!", cli_ip.c_str(), cli_port);
     delete cli_info;
     cli_info = nullptr;
