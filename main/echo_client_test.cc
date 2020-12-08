@@ -22,8 +22,8 @@ int main(void)
     ByteBuffer buff;
     string str;
 
-    std::size_t min_thread = 5;
-    std::size_t max_thread = 5;
+    std::size_t min_thread = 250;
+    std::size_t max_thread = 255;
     ThreadPoolConfig config = {min_thread, max_thread, 30, SHUTDOWN_ALL_THREAD_IMMEDIATELY};
     pool.init();
     pool.set_threadpool_config(config);
@@ -93,7 +93,7 @@ void *echo_handler(void *arg)
             LOG_GLOBAL_WARN("Client: %s:%d exit error!", cli_ip.c_str(), cli_port);
             break;
         } else {
-            //LOG_GLOBAL_DEBUG("Recv from server: %s", recv_data.c_str());
+            LOG_GLOBAL_DEBUG("Recv from server: %s", recv_data.c_str());
             if (recv_data == "quit") {
                 break;
             }

@@ -21,6 +21,9 @@ Mutex::Mutex(void)
 
 Mutex::~Mutex(void)
 {
+    if (state_ == true) {
+        this->unlock();
+    }
 #ifdef __RJF_LINUX__
     int ret = ::pthread_mutex_destroy(&mutex_);
     if (ret != 0) {
@@ -40,6 +43,7 @@ Mutex::lock(void)
     }
 #endif
     state_ = true;
+    LOG_DEBUG("%ld locked", (int64_t)this);
     return 0;
 }
 
@@ -69,7 +73,7 @@ Mutex::unlock(void)
     }
 #endif
     state_ = false;
-
+    LOG_DEBUG("%ld unlocked", (int64_t)this);
     return 0;
 }
 

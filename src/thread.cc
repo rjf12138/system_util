@@ -104,7 +104,6 @@ WorkThread::run_handler(void)
         mutex_.unlock();
         if (state_ == WorkThread_RUNNING) {
             if (thread_pool_->get_task(task_) > 0) {
-                LOG_DEBUG("RUNNING THREAD");
                 task_.state = THREAD_TASK_HANDLE;
                 task_.work_func(task_.thread_arg);
                 task_.state = THREAD_TASK_COMPLETE;
@@ -183,6 +182,8 @@ ThreadPool::ThreadPool(void)
     thread_pool_config_.idle_thread_life = 30;
     thread_pool_config_.threadpool_exit_action = SHUTDOWN_ALL_THREAD_IMMEDIATELY;
     this->manage_work_threads(true);
+    LOG_DEBUG("thread_lock: %ld", (int64_t)&thread_mutex_);
+    LOG_DEBUG("task_lock: %ld", (int64_t)&task_mutex_);
 }
 
 ThreadPool::~ThreadPool(void)
@@ -194,7 +195,7 @@ int
 ThreadPool::run_handler(void)
 {
     while (!exit_) {
-        os_sleep(1000);
+        os_sleep(100);
         this->manage_work_threads(false);
     }
 
@@ -224,11 +225,7 @@ ThreadPool::add_task(Task &task)
     }
     task_mutex_.lock();
     int ret = tasks_.push(task);
-    LOG_DEBUG("add_task---locked");
-    ++i;
     task_mutex_.unlock();
-    LOG_DEBUG("add_task---unlocked");
-    --i;
 
     return ret;
 }
@@ -242,9 +239,7 @@ ThreadPool::add_priority_task(Task &task)
     }
     task_mutex_.lock();
     int ret = priority_tasks_.push(task);
-    LOG_DEBUG("add_priority_task---locked");
     task_mutex_.unlock();
-    LOG_DEBUG("add_priority_task---unlocked");
 
     return ret;
 }
@@ -252,18 +247,13 @@ ThreadPool::add_priority_task(Task &task)
 int 
 ThreadPool::get_task(Task &task)
 {
-    LOG_DEBUG("get_task---wait lock: %s", task_mutex_.get_state()?"true":"false");
     task_mutex_.lock();
     if (priority_tasks_.size() != 0) {
         return priority_tasks_.pop(task);
     } else {
         return tasks_.pop(task);
     }
-    LOG_DEBUG("get_task---locked");
-    ++i;
     task_mutex_.unlock();
-    LOG_DEBUG("get_task---unlocked");
-    --i;
 
     return 0;
 }
