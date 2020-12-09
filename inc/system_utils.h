@@ -131,11 +131,12 @@ public:
 
     virtual int64_t get_thread_id(void) const {return thread_id_;}
     virtual int get_current_state(void) const {return state_;}
-    virtual int adjust_thread_life(int des_time) {remain_life_ -= des_time; return remain_life_;}
+    virtual int idle_timeout(void);
+    virtual int reset_idle_life(void);
 
 private:
-    int idle_life_; // 单位：秒
-    int remain_life_;
+    time_t idle_life_; // 单位：秒
+    time_t start_idle_life_;
     int state_;
     int64_t thread_id_;
 
@@ -161,7 +162,7 @@ struct ThreadPoolConfig {
     std::size_t min_thread_num;
     std::size_t max_thread_num;
     int idle_thread_life;
-    int threadpool_exit_action; // 默认时强制关闭所有线程
+    ThreadPoolExitAction threadpool_exit_action; // 默认时强制关闭所有线程
 };
 
 class ThreadPool : public Thread {
@@ -183,6 +184,8 @@ public:
 
     // 设置最小的线程数量，当线程数量等于它时，线程即使超出它寿命依旧不杀死
     int set_threadpool_config(const ThreadPoolConfig &config);
+    // 打印线程池信息
+    string info(void);
 
 private:
     // 关闭线程池中的所有线程
@@ -201,8 +204,8 @@ private:
     int manage_work_threads(bool is_init);
 
 private:
-    void thread_move_to_idle_map(int64_t thread_id);
-    void thread_move_to_running_map(int64_t thread_id);
+    int thread_move_to_idle_map(int64_t thread_id);
+    int thread_move_to_running_map(int64_t thread_id);
     
 private:
     bool exit_;

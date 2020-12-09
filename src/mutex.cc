@@ -43,7 +43,7 @@ Mutex::lock(void)
     }
 #endif
     state_ = true;
-    LOG_DEBUG("%ld locked", (int64_t)this);
+
     return 0;
 }
 
@@ -73,7 +73,7 @@ Mutex::unlock(void)
     }
 #endif
     state_ = false;
-    LOG_DEBUG("%ld unlocked", (int64_t)this);
+    
     return 0;
 }
 

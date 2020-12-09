@@ -62,8 +62,9 @@ Thread::wait_thread(void)
 
 ////////////////////////////////////// WorkThread ///////////////////////////////////////
 WorkThread::WorkThread(ThreadPool *thread_pool, int idle_life)
-: idle_life_(idle_life), remain_life_(idle_life), thread_pool_(thread_pool)
+: idle_life_(idle_life), thread_pool_(thread_pool)
 {
+    start_idle_life_ = time(NULL);
     thread_id_ = (int64_t)this;
 #ifdef __RJF_LINUX__
     pthread_cond_init(&thread_cond_, NULL);
@@ -150,7 +151,7 @@ WorkThread::pause(void)
     if (state_ == WorkThread_RUNNING) {
         mutex_.lock();
         state_ = WorkThread_WAITING;
-        remain_life_ = idle_life_;
+        start_idle_life_ = time(NULL);
         mutex_.unlock();
         thread_pool_->thread_move_to_idle_map((int64_t)this);
     }
@@ -173,6 +174,24 @@ WorkThread::resume(void)
     return 0;
 }
 
+int 
+WorkThread::idle_timeout(void)
+{
+    if (start_idle_life_ + idle_life_ < time(NULL)) {
+        return true;
+    }
+
+    return false;
+}
+
+int 
+WorkThread::reset_idle_life(void) 
+{
+    start_idle_life_ = time(NULL) + idle_life_; 
+
+    return start_idle_life_;
+}
+
 ///////////////////////////////////////////////////////////////////////////////////
 ThreadPool::ThreadPool(void)
 : exit_(false)
@@ -182,8 +201,6 @@ ThreadPool::ThreadPool(void)
     thread_pool_config_.idle_thread_life = 30;
     thread_pool_config_.threadpool_exit_action = SHUTDOWN_ALL_THREAD_IMMEDIATELY;
     this->manage_work_threads(true);
-    LOG_DEBUG("thread_lock: %ld", (int64_t)&thread_mutex_);
-    LOG_DEBUG("task_lock: %ld", (int64_t)&task_mutex_);
 }
 
 ThreadPool::~ThreadPool(void)
@@ -247,15 +264,16 @@ ThreadPool::add_priority_task(Task &task)
 int 
 ThreadPool::get_task(Task &task)
 {
+    int ret = 0;
     task_mutex_.lock();
-    if (priority_tasks_.size() != 0) {
-        return priority_tasks_.pop(task);
+    if (priority_tasks_.size() > 0) {
+        ret = priority_tasks_.pop(task);
     } else {
-        return tasks_.pop(task);
+        ret = tasks_.pop(task);
     }
     task_mutex_.unlock();
 
-    return 0;
+    return ret;
 }
 
 int 
@@ -317,10 +335,14 @@ ThreadPool::manage_work_threads(bool is_init)
     }
 
     for (auto iter = idle_threads_.begin(); iter != idle_threads_.end();) {
-        auto stop_iter = iter++; // stop_handler 可能会改变idle_threads从而影响到当前的iter,先提前自增
+        if (idle_threads_.size() <= thread_pool_config_.min_thread_num) { // 线程不能小于设置的最小线程数
+            iter->second->reset_idle_life();
+            break;
+        }
 
-        int lifetime = stop_iter->second->adjust_thread_life(1);
-        if (lifetime <= 0) {
+        auto stop_iter = iter++; // stop_handler 可能会改变idle_threads从而影响到当前的iter,先提前自增
+        bool timeout = stop_iter->second->idle_timeout();
+        if (timeout) {
             stop_iter->second->stop_handler(); // 关闭多余的空闲线程
         }
     }
@@ -328,7 +350,7 @@ ThreadPool::manage_work_threads(bool is_init)
     return 0;
 }
 
-void 
+int 
 ThreadPool::thread_move_to_idle_map(int64_t thread_id)
 {
     thread_mutex_.lock();
@@ -336,13 +358,13 @@ ThreadPool::thread_move_to_idle_map(int64_t thread_id)
     if (iter == runing_threads_.end()) {
         LOG_WARN("Can't find thread(thread_id: %ld) at runing_threads", thread_id);
         thread_mutex_.unlock();
-        return ;
+        return -1;
     }
 
     if (idle_threads_.find(thread_id) != idle_threads_.end()) {
         LOG_WARN("There is exists a thread(thread_id: %ld) at idle_threads", thread_id);
         thread_mutex_.unlock();
-        return ;
+        return -1;
     }
 
     idle_threads_[thread_id] = iter->second;
@@ -350,10 +372,10 @@ ThreadPool::thread_move_to_idle_map(int64_t thread_id)
 
     thread_mutex_.unlock();
 
-    return ;
+    return 0;
 }
 
-void 
+int 
 ThreadPool::thread_move_to_running_map(int64_t thread_id)
 {
     thread_mutex_.lock();
@@ -361,13 +383,13 @@ ThreadPool::thread_move_to_running_map(int64_t thread_id)
     if (iter == idle_threads_.end()) {
         LOG_WARN("Can't find thread(thread_id: %ld) at idle_threads", thread_id);
         thread_mutex_.unlock();
-        return ;
+        return -1;
     }
 
     if (runing_threads_.find(thread_id) != runing_threads_.end()) {
         LOG_WARN("There is exists a thread(thread_id: %ld) at runing_threads", thread_id);
         thread_mutex_.unlock();
-        return ;
+        return -1;
     }
 
     runing_threads_[thread_id] = iter->second;
@@ -375,7 +397,7 @@ ThreadPool::thread_move_to_running_map(int64_t thread_id)
 
     thread_mutex_.unlock();
 
-    return ;
+    return 0;
 }
 
 int 
@@ -429,6 +451,7 @@ ThreadPool::shutdown_all_threads(void)
 
     while (runing_threads_.size() > 0) {
         LOG_ERROR("shutdown threads error: %d threads still running", runing_threads_.size());
+        os_sleep(500);
     }
 
     for (auto iter = idle_threads_.begin(); iter != idle_threads_.end(); ) {
@@ -439,5 +462,33 @@ ThreadPool::shutdown_all_threads(void)
     return 0;
 }
 
+string 
+ThreadPool::info(void)
+{
+    ostringstream ostr;
+    string action;
+
+    if (thread_pool_config_.threadpool_exit_action == WAIT_FOR_ALL_TASKS_FINISHED) {
+        action = "WAIT_FOR_ALL_TASKS_FINISHED";
+    } else if (thread_pool_config_.threadpool_exit_action == SHUTDOWN_ALL_THREAD_IMMEDIATELY) {
+        action = "SHUTDOWN_ALL_THREAD_IMMEDIATELY";
+    } else {
+        action = "UNKNOWN_ACTION";
+    }
+
+    ostr << "==================thread pool config==========================" << endl;
+    ostr << "max-threads: " << thread_pool_config_.max_thread_num << endl;
+    ostr << "min-threads: " << thread_pool_config_.min_thread_num << endl;
+    ostr << "idle-thread-life: " << thread_pool_config_.idle_thread_life << endl;
+    ostr << "action when threadpool exit: " << action << endl;
+    ostr << "==================thread pool realtime data===================" << endl;
+    ostr << "running threads: " << runing_threads_.size() << endl;
+    ostr << "idle threads: " << idle_threads_.size() << endl;
+    ostr << "tasks: " << tasks_.size() << endl;
+    ostr << "priority tasks: " << priority_tasks_.size() << endl;
+    ostr << "===========================end================================" << endl;
+
+    return ostr.str();
+}
 
 }

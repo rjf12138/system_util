@@ -5,9 +5,12 @@ using namespace system_utils;
 
 void *echo_handler(void *arg);
 void *echo_exit(void *arg);
+void *print_threadpool_info(void *arg);
+void *print_threadpool_exit(void *arg);
 
 ThreadPool pool;
 bool server_exit = false;
+bool print_exit = false;
 
 // 打断阻塞的accept函数
 static jmp_buf jmpbuf; 
@@ -31,8 +34,8 @@ int main(void)
     ByteBuffer buff;
     string str;
 
-    std::size_t min_thread = 250;
-    std::size_t max_thread = 255;
+    std::size_t min_thread = 30;
+    std::size_t max_thread = 55;
     ThreadPoolConfig config = {min_thread, max_thread, 30, SHUTDOWN_ALL_THREAD_IMMEDIATELY};
     pool.init();
     pool.set_threadpool_config(config);
@@ -45,13 +48,21 @@ int main(void)
     struct sockaddr_in cliaddr;
     socklen_t size = sizeof(cliaddr);
 
-    if(setjmp(jmpbuf)) {
+    if (setjmp(jmpbuf)) {
         pool.stop_handler();
     } 
+
+    Task task;
+    task.exit_arg = &server_exit;
+    task.thread_arg = &pool;
+    task.work_func = print_threadpool_info;
+    task.exit_task = print_threadpool_exit;
+    pool.add_task(task);
 
     while (!server_exit) {
         int ret = echo_server.accept(cli_socket, (sockaddr*)&cliaddr, &size);
         if (ret != 0) {
+            os_sleep(3000);
             break;
         }
         LOG_GLOBAL_DEBUG("accept socket!");
@@ -99,7 +110,7 @@ void *echo_handler(void *arg)
         if (ret > 0) {
             string str;
             buff.read_string(str);
-            LOG_GLOBAL_DEBUG("Client (%s:%d): %s", cli_ip.c_str(), cli_port, str.c_str());
+            // LOG_GLOBAL_DEBUG("Client (%s:%d): %s", cli_ip.c_str(), cli_port, str.c_str());
             buff.write_string(str);
             cli_info->send(buff, str.size(), 0);
             
@@ -113,10 +124,10 @@ void *echo_handler(void *arg)
     }
     // 给2s时间把数据发送到客户端在关闭
     os_sleep(2000);
-    LOG_GLOBAL_DEBUG("Client: %s:%d exit!", cli_ip.c_str(), cli_port);
+    // LOG_GLOBAL_DEBUG("Client: %s:%d exit!", cli_ip.c_str(), cli_port);
     delete cli_info;
     cli_info = nullptr;
-    LOG_GLOBAL_DEBUG("Client: %s:%d closed!", cli_ip.c_str(), cli_port);
+    // LOG_GLOBAL_DEBUG("Client: %s:%d closed!", cli_ip.c_str(), cli_port);
     return nullptr;
 }
 
@@ -128,6 +139,28 @@ void *echo_exit(void *arg)
 
     Socket *cli_info = (Socket*)arg;
     cli_info->close();
+
+    return nullptr;
+}
+
+void *print_threadpool_info(void *arg)
+{
+    if (arg == nullptr) {
+        return nullptr;
+    }
+
+    ThreadPool *threadpool = (ThreadPool*)arg;
+    while (!print_exit) {
+        LOG_GLOBAL_INFO("\n%s\n", threadpool->info().c_str());
+        os_sleep(1000);
+    }
+
+    return nullptr;
+}
+
+void *print_threadpool_exit(void *arg)
+{
+    print_exit = true;
 
     return nullptr;
 }
