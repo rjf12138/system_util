@@ -186,6 +186,8 @@ public:
     int set_threadpool_config(const ThreadPoolConfig &config);
     // 打印线程池信息
     string info(void);
+    // 获取线程池状态
+    ThreadState get_state(void) {return state_;}
 
 private:
     // 关闭线程池中的所有线程
@@ -209,6 +211,7 @@ private:
     
 private:
     bool exit_;
+    ThreadState state_;
     ThreadPoolConfig thread_pool_config_;// 多余的空闲线程会被杀死，直到数量达到最小允许的线程数为止。单位：秒
 
     Mutex thread_mutex_;

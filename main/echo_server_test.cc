@@ -65,7 +65,7 @@ int main(void)
             os_sleep(3000);
             break;
         }
-        LOG_GLOBAL_DEBUG("accept socket!");
+        //LOG_GLOBAL_DEBUG("accept socket!");
         Socket *cli = new Socket;
         cli->set_socket(cli_socket, &cliaddr, &size);
         Task task;
@@ -77,12 +77,16 @@ int main(void)
         pool.add_task(task);
     }
 
+    while (pool.get_state() != WorkThread_EXIT) {
+        os_sleep(500);
+    }
+
     return 0;
 }
 
 void sig_int(int sig)
 {
-    LOG_GLOBAL_DEBUG("Exit server!");
+    //LOG_GLOBAL_DEBUG("Exit server!");
     server_exit = true;
     kill(getpid(), SIGIO);
 }
@@ -102,7 +106,7 @@ void *echo_handler(void *arg)
     string cli_ip;
     uint16_t cli_port;
     cli_info->get_ip_info(cli_ip, cli_port);
-    LOG_GLOBAL_DEBUG("Client: %s:%d connect！", cli_ip.c_str(), cli_port);
+    //LOG_GLOBAL_DEBUG("Client: %s:%d connect！", cli_ip.c_str(), cli_port);
 
     ByteBuffer buff;
     while (cli_info->get_socket_state()) {
@@ -118,7 +122,7 @@ void *echo_handler(void *arg)
                 break;
             }
         } else {
-            LOG_GLOBAL_WARN("Client (%s:%d): Recv error break.", cli_ip.c_str(), cli_port);
+            //LOG_GLOBAL_WARN("Client (%s:%d): Recv error break.", cli_ip.c_str(), cli_port);
             break;
         }
     }

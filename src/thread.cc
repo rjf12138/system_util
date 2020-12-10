@@ -187,7 +187,7 @@ WorkThread::idle_timeout(void)
 int 
 WorkThread::reset_idle_life(void) 
 {
-    start_idle_life_ = time(NULL) + idle_life_; 
+    start_idle_life_ = time(NULL); 
 
     return start_idle_life_;
 }
@@ -201,6 +201,7 @@ ThreadPool::ThreadPool(void)
     thread_pool_config_.idle_thread_life = 30;
     thread_pool_config_.threadpool_exit_action = SHUTDOWN_ALL_THREAD_IMMEDIATELY;
     this->manage_work_threads(true);
+    state_ = WorkThread_WAITING;
 }
 
 ThreadPool::~ThreadPool(void)
@@ -221,18 +222,20 @@ ThreadPool::run_handler(void)
 
 int ThreadPool::stop_handler(void)
 {
+    this->shutdown_all_threads();
     exit_ = true;
-    return this->shutdown_all_threads();
+    state_ = WorkThread_EXIT;
+    return 0;
 }
 
 int 
 ThreadPool::start_handler(void)
 {
     exit_ = false;
-
+    state_ = WorkThread_RUNNING;
     return 0;
 }
-int i = 0;
+
 int 
 ThreadPool::add_task(Task &task)
 {
@@ -334,17 +337,24 @@ ThreadPool::manage_work_threads(bool is_init)
         }
     }
 
+    bool is_close = true;
+    std::size_t workthread_cnt = idle_threads_.size() + runing_threads_.size();
     for (auto iter = idle_threads_.begin(); iter != idle_threads_.end();) {
-        if (idle_threads_.size() <= thread_pool_config_.min_thread_num) { // 线程不能小于设置的最小线程数
-            iter->second->reset_idle_life();
-            break;
+        if (workthread_cnt <= thread_pool_config_.min_thread_num) { // 线程不能小于设置的最小线程数
+            is_close = false;
         }
 
         auto stop_iter = iter++; // stop_handler 可能会改变idle_threads从而影响到当前的iter,先提前自增
         bool timeout = stop_iter->second->idle_timeout();
         if (timeout) {
-            stop_iter->second->stop_handler(); // 关闭多余的空闲线程
+            if (is_close) {
+                stop_iter->second->stop_handler(); // 关闭多余的超时空闲线程
+                workthread_cnt--;
+            } else {
+                stop_iter->second->reset_idle_life();
+            }
         }
+        is_close = true;
     }
 
     return 0;

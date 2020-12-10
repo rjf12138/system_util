@@ -46,6 +46,10 @@ int main(void)
     }
     pool.wait_thread();
 
+     while (pool.get_state() != WorkThread_EXIT) {
+        os_sleep(500);
+    }
+
     return 0;
 }
 
