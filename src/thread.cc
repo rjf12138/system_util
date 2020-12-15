@@ -119,7 +119,7 @@ WorkThread::run_handler(void)
     return 0;
 }
 
-int 
+int
 WorkThread::stop_handler(void)
 {
     // 设置线程为退出状态
@@ -460,7 +460,7 @@ ThreadPool::shutdown_all_threads(void)
     }
 
     while (runing_threads_.size() > 0) {
-        LOG_ERROR("shutdown threads error: %d threads still running", runing_threads_.size());
+        LOG_INFO("shutdown threads waiting: %d threads still running", runing_threads_.size());
         os_sleep(500);
     }
 

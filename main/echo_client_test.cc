@@ -8,6 +8,7 @@ void *echo_exit(void *arg);
 
 ThreadPool pool;
 Stream write_file;
+bool exit_state = false;
 
 void sig_int(int sig);
 
@@ -22,33 +23,37 @@ int main(void)
     ByteBuffer buff;
     string str;
 
-    std::size_t min_thread = 250;
-    std::size_t max_thread = 255;
+    std::size_t min_thread = 450;
+    std::size_t max_thread = 455;
     ThreadPoolConfig config = {min_thread, max_thread, 30, SHUTDOWN_ALL_THREAD_IMMEDIATELY};
     pool.init();
     pool.set_threadpool_config(config);
 
-    for (std::size_t i = 0; i < min_thread; ++i) {
-        Socket *cli = new Socket("127.0.0.1", 12138);
-        Task task;
-        task.exit_arg = cli;
-        task.thread_arg = cli;
-        task.work_func = echo_handler;
-        task.exit_task = echo_exit;
+    for (std::size_t j = 1;j <= min_thread;++j) {
+        for (std::size_t i = 0; i < j; ++i) {
+            Socket *cli = new Socket("127.0.0.1", 12138);
+            Task task;
+            task.exit_arg = cli;
+            task.thread_arg = cli;
+            task.work_func = echo_handler;
+            task.exit_task = echo_exit;
 
-        if (cli->get_socket_state() == false) {
-            delete cli;
-            cli = nullptr;
-            continue;
+            if (cli->get_socket_state() == false) {
+                delete cli;
+                cli = nullptr;
+                continue;
+            }
+            write_file.write_file_fmt("create: %d\n", cli->get_socket());
+            pool.add_task(task);
         }
-        write_file.write_file_fmt("create: %d\n", cli->get_socket());
-        pool.add_task(task);
+        if (j == min_thread) {
+            j = 1;
+        }
+        if (exit_state == true)
+            break;
+        os_sleep(3000);
     }
     pool.wait_thread();
-
-     while (pool.get_state() != WorkThread_EXIT) {
-        os_sleep(500);
-    }
 
     return 0;
 }
@@ -57,6 +62,7 @@ void sig_int(int sig)
 {
     LOG_GLOBAL_DEBUG("Exit client!");
     pool.stop_handler();
+    exit_state = true;
 }
 
 void *echo_handler(void *arg)

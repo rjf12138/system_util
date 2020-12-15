@@ -36,14 +36,11 @@ public:
     virtual int lock(void);
     virtual int trylock(void);
     virtual int unlock(void);
-
-    virtual bool get_state(void) {return state_;}
     virtual int get_errno(void) { return errno_;}
 #ifdef __RJF_LINUX__
     pthread_mutex_t* get_mutex(void) {return &mutex_;}
 #endif
 private:
-    bool state_;
     int errno_;
 #ifdef __RJF_LINUX__
     pthread_mutex_t mutex_;
