@@ -243,12 +243,14 @@ Stream::read_buf_fmt(ByteBuffer &buff, const char *fmt, ...)
     char *tmp_buf = new  char[buf_size];
     memset(tmp_buf, 0, buf_size);
 
-    int read_size = buff.read_bytes(tmp_buf, buf_size);
+    buff.read_bytes(tmp_buf, buf_size);
 
     va_list arg_ptr;
     va_start(arg_ptr,fmt);
-    vscanf(tmp_buf, arg_ptr);
+    int read_size = vsscanf(tmp_buf, fmt, arg_ptr);
     va_end(arg_ptr);
+
+    delete[] tmp_buf;
 
     return read_size;
 }
