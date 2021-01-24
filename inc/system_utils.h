@@ -228,7 +228,7 @@ private:
 class Stream : public MsgRecord {
 public:
     Stream(void);
-    ~Stream(void);
+    virtual ~Stream(void);
 
     // 根据文件路径打开文件
     int open(const string file_path, int flag = DEFAULT_OPEN_FLAG, int file_right = DEFAULT_FILE_RIGHT);

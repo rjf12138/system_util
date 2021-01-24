@@ -97,7 +97,7 @@ Stream::close_file(void)
     if (file_open_flag_ == true && open_on_exit_) {
         file_open_flag_ = false;
         if (close(fd_) < 0) {
-            LOG_ERROR("close(fd_): ", strerror(errno));
+            LOG_ERROR("close(fd_): %s", strerror(errno));
         }
     }
 

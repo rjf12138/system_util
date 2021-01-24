@@ -60,7 +60,7 @@ public:
     // 将消息通过设定的回调函数输出
     virtual void print_msg(InfoLevel level, int line, string file_name, string func, const char *format, ...);
     // 将消息以字符串方式返回
-    virtual string get_msg(InfoLevel level, int line, string file_name, string func, const char *format, ...);
+    //virtual string get_msg(InfoLevel level, int line, string file_name, string func, const char *format, ...);
 
     // 组装消息
     void assemble_msg(ostringstream &ostr, const MsgContent &msg, bool is_color_enable = false);
